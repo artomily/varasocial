@@ -1,0 +1,12 @@
+import { Hexagon } from "lucide-react";
+
+export function Logo({ collapsed = false }: { collapsed?: boolean }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-2">
+      <Hexagon className="h-8 w-8 text-accent" strokeWidth={2.5} />
+      {!collapsed && (
+        <span className="text-xl font-bold text-foreground">VaraSocial</span>
+      )}
+    </div>
+  );
+}

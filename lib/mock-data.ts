@@ -1,0 +1,276 @@
+import type { User, Post, Trend } from "./types";
+
+export const MOCK_USERS: User[] = [
+  {
+    id: "u1",
+    handle: "satoshi_web4",
+    displayName: "Satoshi Nakamura",
+    avatar: "",
+    verified: true,
+    walletAddress: "0x1a2b...3c4d",
+    bio: "Building the decentralized future. Web4 maximalist.",
+    followers: 12400,
+    following: 340,
+  },
+  {
+    id: "u2",
+    handle: "aira_deai",
+    displayName: "Aira Chen",
+    avatar: "",
+    verified: true,
+    walletAddress: "0x5e6f...7g8h",
+    bio: "DeAI researcher @ 0G Labs. Content authenticity advocate.",
+    followers: 8900,
+    following: 512,
+  },
+  {
+    id: "u3",
+    handle: "vara_builder",
+    displayName: "VaraDev.eth",
+    avatar: "",
+    verified: false,
+    walletAddress: "0x9i0j...1k2l",
+    bio: "Open source contributor. Building on VaraSocial.",
+    followers: 3200,
+    following: 890,
+  },
+  {
+    id: "u4",
+    handle: "truthseeker99",
+    displayName: "Maya Truth",
+    avatar: "",
+    verified: true,
+    walletAddress: "0x3m4n...5o6p",
+    bio: "Journalist. Fact-checker. Proven Truth early adopter.",
+    followers: 21000,
+    following: 180,
+  },
+  {
+    id: "u5",
+    handle: "crypto_creative",
+    displayName: "Riku Tanaka",
+    avatar: "",
+    verified: false,
+    walletAddress: "0x7q8r...9s0t",
+    bio: "SocialFi creator. Earning $VARA daily.",
+    followers: 5600,
+    following: 720,
+  },
+  {
+    id: "u6",
+    handle: "zara_web3",
+    displayName: "Zara Okonkwo",
+    avatar: "",
+    verified: true,
+    walletAddress: "0xab12...cd34",
+    bio: "Web3 product designer. Data portability advocate.",
+    followers: 15300,
+    following: 290,
+  },
+];
+
+export const CURRENT_USER: User = MOCK_USERS[0];
+
+function timeAgo(hours: number): string {
+  const d = new Date();
+  d.setHours(d.getHours() - hours);
+  return d.toISOString();
+}
+
+export const MOCK_POSTS: Post[] = [
+  {
+    id: "p1",
+    author: MOCK_USERS[1],
+    content:
+      "Just deployed my first AI content filter on 0G Compute. The latency is surprisingly low — under 200ms for real-time feed curation. DeAI is finally ready for production. 🚀",
+    timestamp: timeAgo(1),
+    likes: 342,
+    reposts: 89,
+    replies: 23,
+    truthScore: 92,
+    truthLevel: "valid",
+    viralityScore: 78,
+    varaReward: 12.5,
+  },
+  {
+    id: "p2",
+    author: MOCK_USERS[3],
+    content:
+      "THREAD: I fact-checked the top 50 viral posts this week using Proven Truth. Results:\n\n🟢 62% verified true\n🟡 24% partially accurate\n🔴 14% outright false\n\nThe truth score system is working. Transparency matters.",
+    timestamp: timeAgo(2),
+    likes: 1203,
+    reposts: 456,
+    replies: 78,
+    truthScore: 95,
+    truthLevel: "valid",
+    viralityScore: 94,
+    varaReward: 45.2,
+  },
+  {
+    id: "p3",
+    author: MOCK_USERS[4],
+    content:
+      "Earned 230 $VARA this month just from my photography posts. SocialFlow's virality scoring actually rewards quality content, not just engagement bait. This is how creator monetization should work.",
+    timestamp: timeAgo(3),
+    likes: 567,
+    reposts: 123,
+    replies: 45,
+    truthScore: 88,
+    truthLevel: "valid",
+    viralityScore: 82,
+    varaReward: 8.3,
+  },
+  {
+    id: "p4",
+    author: MOCK_USERS[2],
+    content:
+      "New open-source connector for importing your Twitter data into VaraSocial is live! Your posts, followers, preferences — all portable via 0G Storage. Data freedom is here.\n\ngithub.com/varasocial/twitter-connector",
+    timestamp: timeAgo(5),
+    likes: 890,
+    reposts: 234,
+    replies: 56,
+    truthScore: 85,
+    truthLevel: "valid",
+    viralityScore: 71,
+    varaReward: 15.0,
+  },
+  {
+    id: "p5",
+    author: MOCK_USERS[5],
+    content:
+      "Hot take: Web4 isn't just about decentralization. It's about giving users the CHOICE of how their data is used. VaraSocial lets me pick my own AI algorithm for my feed. That's the real revolution.",
+    timestamp: timeAgo(6),
+    likes: 445,
+    reposts: 167,
+    replies: 89,
+    truthScore: 72,
+    truthLevel: "valid",
+    viralityScore: 65,
+  },
+  {
+    id: "p6",
+    author: MOCK_USERS[0],
+    content:
+      "Mode Turu handled 47 collaboration requests while I was sleeping. Approved 3 brand deals, scheduled 12 posts across platforms, and sent me a morning summary. The future of creator automation is autonomous agents.",
+    timestamp: timeAgo(8),
+    likes: 678,
+    reposts: 201,
+    replies: 34,
+    truthScore: 80,
+    truthLevel: "valid",
+    viralityScore: 76,
+    varaReward: 22.1,
+  },
+  {
+    id: "p7",
+    author: MOCK_USERS[3],
+    content:
+      "⚠️ FLAGGED: A viral post claiming '0G Storage lost user data' has been debunked. Truth Score: 8/100. The original incident was a testnet issue from 6 months ago being recirculated as current news.",
+    timestamp: timeAgo(10),
+    likes: 2100,
+    reposts: 890,
+    replies: 156,
+    truthScore: 8,
+    truthLevel: "hoax",
+    viralityScore: 91,
+    varaReward: 30.0,
+  },
+  {
+    id: "p8",
+    author: MOCK_USERS[1],
+    content:
+      "Interesting experiment: I ran the same post through 3 different DeAI filters (DeepSeek, Llama, Mistral). Each gave different feed rankings. This is why user-controlled algorithms matter — no single AI should dictate what you see.",
+    timestamp: timeAgo(12),
+    likes: 334,
+    reposts: 78,
+    replies: 41,
+    truthScore: 90,
+    truthLevel: "valid",
+    viralityScore: 58,
+  },
+  {
+    id: "p9",
+    author: MOCK_USERS[4],
+    content:
+      "Some people say creator tokens are just hype. My $VARA earnings this quarter say otherwise. Transparent smart contracts, no middleman, instant payouts. Show me another platform that does this.",
+    timestamp: timeAgo(15),
+    likes: 445,
+    reposts: 112,
+    replies: 67,
+    truthScore: 55,
+    truthLevel: "suspicious",
+    viralityScore: 62,
+    varaReward: 5.0,
+  },
+  {
+    id: "p10",
+    author: MOCK_USERS[5],
+    content:
+      "Just exported my entire social graph from VaraSocial and imported it into another Web4 app. Same followers, same content, same preferences. One wallet key. Zero vendor lock-in. This is data portability done right.",
+    timestamp: timeAgo(18),
+    likes: 923,
+    reposts: 345,
+    replies: 90,
+    truthScore: 87,
+    truthLevel: "valid",
+    viralityScore: 85,
+    varaReward: 18.7,
+  },
+  {
+    id: "p11",
+    author: MOCK_USERS[2],
+    content:
+      "PSA: If you're building on VaraSocial, check out the new JSON-LD data schema docs. Makes cross-platform data portability seamless. The identity/ and posts/ structures are elegant.",
+    timestamp: timeAgo(22),
+    likes: 189,
+    reposts: 56,
+    replies: 12,
+    truthScore: 91,
+    truthLevel: "valid",
+    viralityScore: 42,
+  },
+  {
+    id: "p12",
+    author: MOCK_USERS[0],
+    content:
+      "Unpopular opinion: most 'decentralized' social platforms are still centralized where it matters — the algorithm. VaraSocial is the first platform where I genuinely control what AI curates my feed. That's the difference.",
+    timestamp: timeAgo(24),
+    likes: 756,
+    reposts: 289,
+    replies: 103,
+    truthScore: 68,
+    truthLevel: "suspicious",
+    viralityScore: 73,
+  },
+];
+
+export const MOCK_TRENDS: Trend[] = [
+  { id: "t1", topic: "Web4", postCount: 12500, category: "Technology" },
+  { id: "t2", topic: "0G Storage", postCount: 8900, category: "Blockchain" },
+  {
+    id: "t3",
+    topic: "Data Portability",
+    postCount: 6700,
+    category: "Privacy",
+  },
+  { id: "t4", topic: "$VARA", postCount: 5400, category: "Crypto" },
+  {
+    id: "t5",
+    topic: "DeAI Filtering",
+    postCount: 4200,
+    category: "AI",
+  },
+  {
+    id: "t6",
+    topic: "Proven Truth",
+    postCount: 3800,
+    category: "Fact-Check",
+  },
+  { id: "t7", topic: "Mode Turu", postCount: 2100, category: "Automation" },
+];
+
+export const SUGGESTED_FOLLOWS: User[] = [
+  MOCK_USERS[2],
+  MOCK_USERS[4],
+  MOCK_USERS[5],
+];

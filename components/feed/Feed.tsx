@@ -1,0 +1,54 @@
+"use client";
+
+import { useState } from "react";
+import { PostCard } from "./PostCard";
+import { ComposeBox } from "./ComposeBox";
+import { MOCK_POSTS } from "@/lib/mock-data";
+
+const TABS = ["For You", "Following", "Truth Verified"] as const;
+
+export function Feed() {
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("For You");
+
+  const filteredPosts =
+    activeTab === "Truth Verified"
+      ? MOCK_POSTS.filter((p) => p.truthLevel === "valid" && p.truthScore >= 80)
+      : MOCK_POSTS;
+
+  return (
+    <div>
+      {/* Tabs */}
+      <div className="sticky top-0 z-10 flex border-b border-border bg-background/80 backdrop-blur-md">
+        {TABS.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-4 text-sm font-medium transition-colors hover:bg-surface/50 ${
+              activeTab === tab ? "text-foreground" : "text-secondary"
+            }`}
+          >
+            <span
+              className={`relative inline-block pb-3 ${
+                activeTab === tab
+                  ? "after:absolute after:bottom-0 after:left-0 after:h-1 after:w-full after:rounded-full after:bg-accent"
+                  : ""
+              }`}
+            >
+              {tab}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Compose */}
+      <ComposeBox />
+
+      {/* Posts */}
+      <div>
+        {filteredPosts.map((post) => (
+          <PostCard key={post.id} post={post} />
+        ))}
+      </div>
+    </div>
+  );
+}

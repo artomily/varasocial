@@ -1,0 +1,99 @@
+"use client";
+
+import {
+  MessageCircle,
+  Repeat2,
+  Heart,
+  Share,
+  Bookmark,
+} from "lucide-react";
+import type { Post } from "@/lib/types";
+import { Avatar } from "@/components/common/Avatar";
+import { TruthBadge } from "@/components/common/TruthBadge";
+import { ViralityScore } from "@/components/common/ViralityScore";
+import { VaraReward } from "@/components/common/VaraReward";
+
+function formatTime(timestamp: string): string {
+  const diff = Date.now() - new Date(timestamp).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+function formatCount(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return n > 0 ? String(n) : "";
+}
+
+const actions = [
+  { icon: MessageCircle, key: "replies" as const, hoverColor: "hover:text-accent" },
+  { icon: Repeat2, key: "reposts" as const, hoverColor: "hover:text-truth-valid" },
+  { icon: Heart, key: "likes" as const, hoverColor: "hover:text-truth-hoax" },
+  { icon: Share, key: null, hoverColor: "hover:text-accent" },
+  { icon: Bookmark, key: null, hoverColor: "hover:text-accent" },
+];
+
+export function PostCard({ post }: { post: Post }) {
+  return (
+    <article className="flex gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/50">
+      <Avatar name={post.author.displayName} />
+
+      <div className="min-w-0 flex-1">
+        {/* Header */}
+        <div className="flex items-center gap-1 text-sm">
+          <span className="truncate font-bold">
+            {post.author.displayName}
+          </span>
+          {post.author.verified && (
+            <svg
+              viewBox="0 0 22 22"
+              className="h-4.5 w-4.5 shrink-0 text-accent"
+              fill="currentColor"
+            >
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.852-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.69-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.636.433 1.221.878 1.69.47.446 1.055.752 1.69.883.635.13 1.294.083 1.902-.144.271.587.702 1.087 1.24 1.44.54.354 1.167.551 1.813.568.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.223 1.26.272 1.893.143.636-.13 1.222-.434 1.69-.88.445-.47.75-1.055.88-1.69.131-.636.084-1.294-.139-1.9.588-.269 1.088-.698 1.443-1.232.355-.535.554-1.163.574-1.81z" />
+              <path
+                d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z"
+                fill="#000"
+              />
+            </svg>
+          )}
+          <span className="text-secondary">@{post.author.handle}</span>
+          <span className="text-secondary">·</span>
+          <span className="text-secondary">{formatTime(post.timestamp)}</span>
+        </div>
+
+        {/* Content */}
+        <p className="mt-1 whitespace-pre-wrap text-[15px] leading-relaxed">
+          {post.content}
+        </p>
+
+        {/* Truth + Virality + Reward badges */}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <TruthBadge level={post.truthLevel} score={post.truthScore} />
+          <ViralityScore score={post.viralityScore} />
+          {post.varaReward && <VaraReward amount={post.varaReward} />}
+        </div>
+
+        {/* Action bar */}
+        <div className="-ml-2 mt-2 flex items-center justify-between max-w-md">
+          {actions.map(({ icon: Icon, key, hoverColor }) => (
+            <button
+              key={Icon.displayName}
+              className={`group flex items-center gap-1.5 rounded-full p-2 text-secondary transition-colors ${hoverColor}`}
+            >
+              <Icon className="h-[18px] w-[18px]" />
+              {key && (
+                <span className="text-xs">
+                  {formatCount(post[key])}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}

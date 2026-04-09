@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   MessageCircle,
   Repeat2,
@@ -12,6 +13,7 @@ import { Avatar } from "@/components/common/Avatar";
 import { TruthBadge } from "@/components/common/TruthBadge";
 import { ViralityScore } from "@/components/common/ViralityScore";
 import { VaraReward } from "@/components/common/VaraReward";
+import { useApp } from "@/lib/store";
 
 function formatTime(timestamp: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -28,25 +30,35 @@ function formatCount(n: number): string {
   return n > 0 ? String(n) : "";
 }
 
-const actions = [
-  { icon: MessageCircle, key: "replies" as const, hoverColor: "hover:text-accent" },
-  { icon: Repeat2, key: "reposts" as const, hoverColor: "hover:text-truth-valid" },
-  { icon: Heart, key: "likes" as const, hoverColor: "hover:text-truth-hoax" },
-  { icon: Share, key: null, hoverColor: "hover:text-accent" },
-  { icon: Bookmark, key: null, hoverColor: "hover:text-accent" },
-];
-
 export function PostCard({ post }: { post: Post }) {
+  const {
+    likedPosts,
+    repostedPosts,
+    bookmarkedPosts,
+    toggleLike,
+    toggleRepost,
+    toggleBookmark,
+  } = useApp();
+
+  const isLiked = likedPosts.has(post.id);
+  const isReposted = repostedPosts.has(post.id);
+  const isBookmarked = bookmarkedPosts.has(post.id);
+
   return (
     <article className="flex gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/50">
-      <Avatar name={post.author.displayName} />
+      <Link href={`/user/${post.author.handle}`}>
+        <Avatar name={post.author.displayName} />
+      </Link>
 
       <div className="min-w-0 flex-1">
         {/* Header */}
         <div className="flex items-center gap-1 text-sm">
-          <span className="truncate font-bold">
+          <Link
+            href={`/user/${post.author.handle}`}
+            className="truncate font-bold hover:underline"
+          >
             {post.author.displayName}
-          </span>
+          </Link>
           {post.author.verified && (
             <svg
               viewBox="0 0 22 22"
@@ -60,15 +72,24 @@ export function PostCard({ post }: { post: Post }) {
               />
             </svg>
           )}
-          <span className="text-secondary">@{post.author.handle}</span>
+          <Link
+            href={`/user/${post.author.handle}`}
+            className="text-secondary hover:underline"
+          >
+            @{post.author.handle}
+          </Link>
           <span className="text-secondary">·</span>
-          <span className="text-secondary">{formatTime(post.timestamp)}</span>
+          <Link href={`/post/${post.id}`} className="text-secondary hover:underline">
+            {formatTime(post.timestamp)}
+          </Link>
         </div>
 
-        {/* Content */}
-        <p className="mt-1 whitespace-pre-wrap text-[15px] leading-relaxed">
-          {post.content}
-        </p>
+        {/* Content — clickable to post detail */}
+        <Link href={`/post/${post.id}`} className="block">
+          <p className="mt-1 whitespace-pre-wrap text-[15px] leading-relaxed">
+            {post.content}
+          </p>
+        </Link>
 
         {/* Truth + Virality + Reward badges */}
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -79,19 +100,52 @@ export function PostCard({ post }: { post: Post }) {
 
         {/* Action bar */}
         <div className="-ml-2 mt-2 flex items-center justify-between max-w-md">
-          {actions.map(({ icon: Icon, key, hoverColor }) => (
-            <button
-              key={Icon.displayName}
-              className={`group flex items-center gap-1.5 rounded-full p-2 text-secondary transition-colors ${hoverColor}`}
-            >
-              <Icon className="h-[18px] w-[18px]" />
-              {key && (
-                <span className="text-xs">
-                  {formatCount(post[key])}
-                </span>
-              )}
-            </button>
-          ))}
+          <Link
+            href={`/post/${post.id}`}
+            className="group flex items-center gap-1.5 rounded-full p-2 text-secondary transition-colors hover:text-accent"
+          >
+            <MessageCircle className="h-4.5 w-4.5" />
+            <span className="text-xs">{formatCount(post.replies)}</span>
+          </Link>
+
+          <button
+            onClick={() => toggleRepost(post.id)}
+            className={`group flex items-center gap-1.5 rounded-full p-2 transition-colors ${
+              isReposted ? "text-truth-valid" : "text-secondary hover:text-truth-valid"
+            }`}
+          >
+            <Repeat2 className="h-4.5 w-4.5" />
+            <span className="text-xs">{formatCount(post.reposts)}</span>
+          </button>
+
+          <button
+            onClick={() => toggleLike(post.id)}
+            className={`group flex items-center gap-1.5 rounded-full p-2 transition-colors ${
+              isLiked ? "text-truth-hoax" : "text-secondary hover:text-truth-hoax"
+            }`}
+          >
+            <Heart
+              className="h-4.5 w-4.5"
+              fill={isLiked ? "currentColor" : "none"}
+            />
+            <span className="text-xs">{formatCount(post.likes)}</span>
+          </button>
+
+          <button className="group flex items-center gap-1.5 rounded-full p-2 text-secondary transition-colors hover:text-accent">
+            <Share className="h-4.5 w-4.5" />
+          </button>
+
+          <button
+            onClick={() => toggleBookmark(post.id)}
+            className={`group flex items-center gap-1.5 rounded-full p-2 transition-colors ${
+              isBookmarked ? "text-accent" : "text-secondary hover:text-accent"
+            }`}
+          >
+            <Bookmark
+              className="h-4.5 w-4.5"
+              fill={isBookmarked ? "currentColor" : "none"}
+            />
+          </button>
         </div>
       </div>
     </article>

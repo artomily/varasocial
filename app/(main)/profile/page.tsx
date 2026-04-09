@@ -1,15 +1,19 @@
+"use client";
+
 import { Calendar, LinkIcon } from "lucide-react";
-import { CURRENT_USER, MOCK_POSTS } from "@/lib/mock-data";
+import { CURRENT_USER } from "@/lib/mock-data";
+import { useApp } from "@/lib/store";
 import { Avatar } from "@/components/common/Avatar";
 import { PostCard } from "@/components/feed/PostCard";
 
 export default function ProfilePage() {
-  const userPosts = MOCK_POSTS.filter((p) => p.author.id === CURRENT_USER.id);
+  const { posts } = useApp();
+  const userPosts = posts.filter((p) => p.author.id === CURRENT_USER.id);
 
   return (
     <div>
       {/* Header banner */}
-      <div className="h-48 bg-gradient-to-r from-accent/30 to-vara-reward/30" />
+      <div className="h-48 bg-linear-to-r from-accent/30 to-vara-reward/30" />
 
       {/* Profile info */}
       <div className="border-b border-border px-4 pb-4">

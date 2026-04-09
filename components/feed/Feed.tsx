@@ -3,17 +3,18 @@
 import { useState } from "react";
 import { PostCard } from "./PostCard";
 import { ComposeBox } from "./ComposeBox";
-import { MOCK_POSTS } from "@/lib/mock-data";
+import { useApp } from "@/lib/store";
 
 const TABS = ["For You", "Following", "Truth Verified"] as const;
 
 export function Feed() {
+  const { posts } = useApp();
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("For You");
 
   const filteredPosts =
     activeTab === "Truth Verified"
-      ? MOCK_POSTS.filter((p) => p.truthLevel === "valid" && p.truthScore >= 80)
-      : MOCK_POSTS;
+      ? posts.filter((p) => p.truthLevel === "valid" && p.truthScore >= 80)
+      : posts;
 
   return (
     <div>

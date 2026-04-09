@@ -1,9 +1,12 @@
+"use client";
+
 import { Bookmark } from "lucide-react";
-import { MOCK_POSTS } from "@/lib/mock-data";
+import { useApp } from "@/lib/store";
 import { PostCard } from "@/components/feed/PostCard";
 
 export default function BookmarksPage() {
-  const bookmarkedPosts = MOCK_POSTS.slice(0, 4);
+  const { posts, bookmarkedPosts } = useApp();
+  const saved = posts.filter((p) => bookmarkedPosts.has(p.id));
 
   return (
     <div>
@@ -11,8 +14,8 @@ export default function BookmarksPage() {
         <h1 className="text-xl font-bold">Bookmarks</h1>
       </div>
 
-      {bookmarkedPosts.length > 0 ? (
-        bookmarkedPosts.map((post) => <PostCard key={post.id} post={post} />)
+      {saved.length > 0 ? (
+        saved.map((post) => <PostCard key={post.id} post={post} />)
       ) : (
         <div className="p-8 text-center">
           <Bookmark className="mx-auto mb-3 h-12 w-12 text-secondary" />

@@ -9,7 +9,7 @@ function formatCount(n: number): string {
 
 export function RightPanel() {
   return (
-    <aside className="sticky top-0 hidden h-screen w-[350px] shrink-0 flex-col gap-4 overflow-y-auto py-3 pl-6 pr-4 lg:flex">
+    <aside className="sticky top-0 hidden h-screen w-87.5 shrink-0 flex-col gap-4 overflow-y-auto py-3 pl-6 pr-4 lg:flex">
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-secondary" />

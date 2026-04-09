@@ -28,6 +28,28 @@ export interface Post {
   parentId?: string;
 }
 
+export interface Comment {
+  id: string;
+  postId: string;
+  author: User;
+  content: string;
+  timestamp: string;
+  likes: number;
+  isAI?: boolean;
+}
+
+export interface DirectMessage {
+  id: string;
+  senderId: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface Conversation {
+  userId: string;
+  messages: DirectMessage[];
+}
+
 export interface Trend {
   id: string;
   topic: string;

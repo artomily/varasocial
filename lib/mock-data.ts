@@ -1,4 +1,4 @@
-import type { User, Post, Trend } from "./types";
+import type { User, Post, Trend, Comment, Conversation } from "./types";
 
 export const MOCK_USERS: User[] = [
   {
@@ -273,4 +273,191 @@ export const SUGGESTED_FOLLOWS: User[] = [
   MOCK_USERS[2],
   MOCK_USERS[4],
   MOCK_USERS[5],
+];
+
+export const VARA_AI_USER: User = {
+  id: "vara-ai",
+  handle: "VaraAI",
+  displayName: "VaraAI",
+  avatar: "",
+  verified: true,
+  walletAddress: "0G-Compute",
+  bio: "Decentralized AI analysis powered by 0G Compute.",
+  followers: 0,
+  following: 0,
+};
+
+function generateAIComment(post: Post): Comment {
+  const truthLabel =
+    post.truthLevel === "valid"
+      ? "✅ Verified"
+      : post.truthLevel === "suspicious"
+        ? "⚠️ Suspicious"
+        : "🚫 Hoax Detected";
+
+  let analysis: string;
+  if (post.truthLevel === "hoax") {
+    analysis = `${truthLabel} — Truth Score: ${post.truthScore}/100\n\nThis post contains claims that have been debunked by multiple verified sources. The content appears to reference outdated or fabricated information. Exercise caution before sharing.\n\nVirality: ${post.viralityScore}/100 · Sources cross-referenced: 12`;
+  } else if (post.truthLevel === "suspicious") {
+    analysis = `${truthLabel} — Truth Score: ${post.truthScore}/100\n\nThis post contains partially verifiable claims. Some statements lack sufficient evidence or contain subjective assertions presented as facts. Recommend verifying key claims independently.\n\nVirality: ${post.viralityScore}/100 · Sources cross-referenced: 8`;
+  } else {
+    analysis = `${truthLabel} — Truth Score: ${post.truthScore}/100\n\nThis post's claims align with verified data from multiple decentralized sources. Content authenticity has been validated through 0G Compute cross-referencing.\n\nVirality: ${post.viralityScore}/100 · Sources cross-referenced: 15`;
+  }
+
+  return {
+    id: `ai-${post.id}`,
+    postId: post.id,
+    author: VARA_AI_USER,
+    content: analysis,
+    timestamp: post.timestamp,
+    likes: Math.floor(post.likes * 0.3),
+    isAI: true,
+  };
+}
+
+export const MOCK_COMMENTS: Comment[] = [
+  // AI comments (one per post, generated)
+  ...MOCK_POSTS.map(generateAIComment),
+  // User comments
+  {
+    id: "c1",
+    postId: "p1",
+    author: MOCK_USERS[3],
+    content: "200ms latency is impressive! What model are you running on 0G Compute?",
+    timestamp: timeAgo(0.5),
+    likes: 24,
+  },
+  {
+    id: "c2",
+    postId: "p1",
+    author: MOCK_USERS[0],
+    content: "This is the kind of performance we need for mainstream adoption. Great work Aira!",
+    timestamp: timeAgo(0.8),
+    likes: 18,
+  },
+  {
+    id: "c3",
+    postId: "p2",
+    author: MOCK_USERS[1],
+    content: "Really solid analysis. The 14% false rate is still concerning though — we need to improve detection.",
+    timestamp: timeAgo(1.5),
+    likes: 45,
+  },
+  {
+    id: "c4",
+    postId: "p2",
+    author: MOCK_USERS[5],
+    content: "Transparency like this is why I moved to VaraSocial. No other platform publishes these stats.",
+    timestamp: timeAgo(1.8),
+    likes: 33,
+  },
+  {
+    id: "c5",
+    postId: "p3",
+    author: MOCK_USERS[2],
+    content: "Congrats! The SocialFlow algorithm really does reward quality over spam.",
+    timestamp: timeAgo(2.5),
+    likes: 12,
+  },
+  {
+    id: "c6",
+    postId: "p4",
+    author: MOCK_USERS[0],
+    content: "Just tested the connector — imported 3 years of Twitter data in under 2 minutes. Incredible.",
+    timestamp: timeAgo(4),
+    likes: 67,
+  },
+  {
+    id: "c7",
+    postId: "p7",
+    author: MOCK_USERS[5],
+    content: "This is exactly why we need Proven Truth. Misinformation spreading unchecked is dangerous.",
+    timestamp: timeAgo(9),
+    likes: 89,
+  },
+  {
+    id: "c8",
+    postId: "p7",
+    author: MOCK_USERS[2],
+    content: "I almost shared the original post before checking the truth score. The badge system works.",
+    timestamp: timeAgo(9.5),
+    likes: 56,
+  },
+  {
+    id: "c9",
+    postId: "p5",
+    author: MOCK_USERS[4],
+    content: "Exactly! Choice is the keyword. Web4 is about sovereignty, not just decentralization.",
+    timestamp: timeAgo(5.5),
+    likes: 28,
+  },
+  {
+    id: "c10",
+    postId: "p6",
+    author: MOCK_USERS[1],
+    content: "Mode Turu is a game changer for creators. How do you configure the approval thresholds?",
+    timestamp: timeAgo(7),
+    likes: 15,
+  },
+  {
+    id: "c11",
+    postId: "p10",
+    author: MOCK_USERS[3],
+    content: "This is the dream. True data portability. No more platform lock-in.",
+    timestamp: timeAgo(17),
+    likes: 41,
+  },
+  {
+    id: "c12",
+    postId: "p12",
+    author: MOCK_USERS[4],
+    content: "Hard agree. The algorithm is where the real power lies, and users should control it.",
+    timestamp: timeAgo(23),
+    likes: 37,
+  },
+];
+
+export const MOCK_CONVERSATIONS: Conversation[] = [
+  {
+    userId: "u2",
+    messages: [
+      { id: "dm1", senderId: "u2", text: "Hey! Saw your post about Mode Turu. Impressive numbers!", timestamp: timeAgo(3) },
+      { id: "dm2", senderId: "u1", text: "Thanks Aira! The agent handled everything while I slept 😴", timestamp: timeAgo(2.8) },
+      { id: "dm3", senderId: "u2", text: "I'd love to integrate it with my DeAI filter. Want to collab?", timestamp: timeAgo(2.5) },
+      { id: "dm4", senderId: "u1", text: "Absolutely! Let's set up a call this week.", timestamp: timeAgo(2) },
+      { id: "dm5", senderId: "u2", text: "Sure, let's collab on the DeAI article!", timestamp: timeAgo(0.03) },
+    ],
+  },
+  {
+    userId: "u4",
+    messages: [
+      { id: "dm6", senderId: "u4", text: "Your truth score thread was amazing. Can I reference it in my article?", timestamp: timeAgo(5) },
+      { id: "dm7", senderId: "u1", text: "Of course! Happy to help with fact-checking too.", timestamp: timeAgo(4.5) },
+      { id: "dm8", senderId: "u4", text: "The truth score data is ready for review", timestamp: timeAgo(1) },
+    ],
+  },
+  {
+    userId: "u5",
+    messages: [
+      { id: "dm9", senderId: "u5", text: "How's your $VARA earnings this month?", timestamp: timeAgo(8) },
+      { id: "dm10", senderId: "u1", text: "Pretty good! SocialFlow is paying out well for quality content.", timestamp: timeAgo(7) },
+      { id: "dm11", senderId: "u5", text: "Got the $VARA payment. Thanks!", timestamp: timeAgo(3) },
+    ],
+  },
+  {
+    userId: "u6",
+    messages: [
+      { id: "dm12", senderId: "u6", text: "Hi! I'm interested in data portability features.", timestamp: timeAgo(10) },
+      { id: "dm13", senderId: "u1", text: "It's the core of VaraSocial. What questions do you have?", timestamp: timeAgo(9) },
+      { id: "dm14", senderId: "u6", text: "Would love to discuss data portability", timestamp: timeAgo(5) },
+    ],
+  },
+  {
+    userId: "u3",
+    messages: [
+      { id: "dm15", senderId: "u3", text: "The Twitter connector is live! Check it out.", timestamp: timeAgo(26) },
+      { id: "dm16", senderId: "u1", text: "Just tested it — works great! Imported everything.", timestamp: timeAgo(25) },
+      { id: "dm17", senderId: "u3", text: "New connector is deployed 🚀", timestamp: timeAgo(24) },
+    ],
+  },
 ];

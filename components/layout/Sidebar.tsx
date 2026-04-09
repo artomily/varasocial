@@ -8,12 +8,14 @@ import { Logo } from "@/components/common/Logo";
 import { WalletButton } from "@/components/common/WalletButton";
 import { Avatar } from "@/components/common/Avatar";
 import { CURRENT_USER } from "@/lib/mock-data";
+import { useApp } from "@/lib/store";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { varaAIEnabled, toggleVaraAI } = useApp();
 
   return (
-    <aside className="sticky top-0 flex h-screen flex-col justify-between border-r border-border px-2 py-3 xl:w-[275px]">
+    <aside className="sticky top-0 flex h-screen flex-col justify-between border-r border-border px-2 py-3 xl:w-68.75">
       {/* Logo */}
       <div>
         <Link href="/" className="mb-2 inline-block">
@@ -39,7 +41,7 @@ export function Sidebar() {
                 }`}
               >
                 <Icon
-                  className="h-[26px] w-[26px]"
+                  className="h-6.5 w-6.5"
                   strokeWidth={isActive ? 2.5 : 1.8}
                 />
                 <span className="hidden xl:inline">{item.label}</span>
@@ -52,6 +54,35 @@ export function Sidebar() {
         <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-accent py-3 text-base font-bold text-white transition-colors hover:bg-accent-hover xl:px-6">
           <Feather className="h-6 w-6 xl:hidden" />
           <span className="hidden xl:inline">Post</span>
+        </button>
+
+        {/* VaraAI Toggle */}
+        <button
+          onClick={toggleVaraAI}
+          className="mt-3 flex w-full items-center justify-between gap-3 rounded-full px-3 py-3 transition-colors hover:bg-surface-hover xl:pr-6"
+          title={varaAIEnabled ? "Disable VaraAI" : "Enable VaraAI"}
+        >
+          <div className="flex items-center gap-3">
+            <svg
+              viewBox="0 0 22 22"
+              className={`h-6 w-6 ${varaAIEnabled ? "text-accent" : "text-secondary"}`}
+              fill="currentColor"
+            >
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.852-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.69-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.636.433 1.221.878 1.69.47.446 1.055.752 1.69.883.635.13 1.294.083 1.902-.144.271.587.702 1.087 1.24 1.44.54.354 1.167.551 1.813.568.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.223 1.26.272 1.893.143.636-.13 1.222-.434 1.69-.88.445-.47.75-1.055.88-1.69.131-.636.084-1.294-.139-1.9.588-.269 1.088-.698 1.443-1.232.355-.535.554-1.163.574-1.81z" />
+            </svg>
+            <span className="hidden text-sm xl:inline">VaraAI</span>
+          </div>
+          <div
+            className={`hidden h-5 w-9 rounded-full p-0.5 transition-colors xl:block ${
+              varaAIEnabled ? "bg-accent" : "bg-border"
+            }`}
+          >
+            <div
+              className={`h-4 w-4 rounded-full bg-white transition-transform ${
+                varaAIEnabled ? "translate-x-4" : "translate-x-0"
+              }`}
+            />
+          </div>
         </button>
       </div>
 

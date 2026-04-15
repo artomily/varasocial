@@ -12,11 +12,13 @@ export interface User {
   following: number;
 }
 
+export type MediaItem = { type: "image" | "video"; url: string };
+
 export interface Post {
   id: string;
   author: User;
   content: string;
-  media?: string;
+  media?: MediaItem[];
   timestamp: string;
   likes: number;
   reposts: number;

@@ -242,6 +242,61 @@ export const MOCK_POSTS: Post[] = [
     truthLevel: "suspicious",
     viralityScore: 73,
   },
+  {
+    id: "p13",
+    author: MOCK_USERS[4],
+    content:
+      "Shot this at golden hour using my phone — the 0G IPFS gateway served this image to 12k people in under 80ms. Decentralized media delivery is real. 📸",
+    media: [
+      { type: "image", url: "https://picsum.photos/seed/vara1/800/450" },
+    ],
+    timestamp: timeAgo(3),
+    likes: 891,
+    reposts: 178,
+    replies: 54,
+    truthScore: 90,
+    truthLevel: "valid",
+    viralityScore: 83,
+    varaReward: 14.8,
+  },
+  {
+    id: "p14",
+    author: MOCK_USERS[5],
+    content:
+      "Behind the scenes of our Web4 design sprint. Two days, six screens, zero central servers. 🎨",
+    media: [
+      { type: "image", url: "https://picsum.photos/seed/vara2/800/450" },
+      { type: "image", url: "https://picsum.photos/seed/vara3/800/450" },
+    ],
+    timestamp: timeAgo(7),
+    likes: 623,
+    reposts: 105,
+    replies: 38,
+    truthScore: 88,
+    truthLevel: "valid",
+    viralityScore: 70,
+    varaReward: 9.2,
+  },
+  {
+    id: "p15",
+    author: MOCK_USERS[1],
+    content:
+      "Demo of our real-time AI truth verification pipeline running on 0G Compute. Latency under 150ms end-to-end. Full walkthrough 👇",
+    media: [
+      {
+        type: "video",
+        url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      },
+    ],
+    timestamp: timeAgo(10),
+    likes: 1450,
+    reposts: 312,
+    replies: 97,
+    truthScore: 94,
+    truthLevel: "valid",
+    viralityScore: 89,
+    varaReward: 38.5,
+  },
 ];
 
 export const MOCK_TRENDS: Trend[] = [

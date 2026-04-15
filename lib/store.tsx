@@ -24,6 +24,7 @@ interface AppState {
   bookmarkedPosts: Set<string>;
   followingUsers: Set<string>;
   varaAIEnabled: boolean;
+  sidebarCollapsed: boolean;
 }
 
 interface AppActions {
@@ -32,6 +33,7 @@ interface AppActions {
   toggleBookmark: (postId: string) => void;
   toggleFollow: (userId: string) => void;
   toggleVaraAI: () => void;
+  toggleSidebar: () => void;
   addComment: (postId: string, content: string) => void;
   addPost: (content: string) => void;
   sendMessage: (userId: string, text: string) => void;
@@ -56,6 +58,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     new Set()
   );
   const [varaAIEnabled, setVaraAIEnabled] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const toggleLike = useCallback((postId: string) => {
     setLikedPosts((prev) => {
@@ -124,6 +127,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const toggleVaraAI = useCallback(() => {
     setVaraAIEnabled((prev) => !prev);
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => !prev);
   }, []);
 
   const addComment = useCallback(
@@ -204,11 +211,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         bookmarkedPosts,
         followingUsers,
         varaAIEnabled,
+        sidebarCollapsed,
         toggleLike,
         toggleRepost,
         toggleBookmark,
         toggleFollow,
         toggleVaraAI,
+        toggleSidebar,
         addComment,
         addPost,
         sendMessage,

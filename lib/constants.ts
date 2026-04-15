@@ -10,6 +10,7 @@ import {
   Bookmark,
   User,
   Settings,
+  DollarSign,
   type LucideIcon,
 } from "lucide-react";
 
@@ -30,6 +31,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Messages", href: "/messages", icon: Mail },
   { label: "Bookmarks", href: "/bookmarks", icon: Bookmark },
   { label: "Profile", href: "/profile", icon: User },
+  { label: "Monetize", href: "/monetize", icon: DollarSign },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

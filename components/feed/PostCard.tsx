@@ -91,7 +91,37 @@ export function PostCard({ post }: { post: Post }) {
           </p>
         </Link>
 
-        {/* Truth + Virality + Reward badges */}
+        {/* Media */}
+        {post.media && post.media.length > 0 && (
+          <div
+            className={`mt-3 grid gap-1 overflow-hidden rounded-2xl border border-border ${
+              post.media.length > 1 ? "grid-cols-2" : "grid-cols-1"
+            }`}
+          >
+            {post.media.map((item, idx) =>
+              item.type === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={idx}
+                  src={item.url}
+                  alt="Post media"
+                  className="w-full object-cover"
+                  style={{ maxHeight: post.media!.length > 1 ? "200px" : "400px" }}
+                />
+              ) : (
+                <video
+                  key={idx}
+                  src={item.url}
+                  controls
+                  className="w-full rounded-2xl"
+                  style={{ maxHeight: "400px" }}
+                />
+              )
+            )}
+          </div>
+        )}
+
+
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <TruthBadge level={post.truthLevel} score={post.truthScore} />
           <ViralityScore score={post.viralityScore} />

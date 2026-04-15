@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { ImageIcon, Smile, SlidersHorizontal } from "lucide-react";
 import { Avatar } from "@/components/common/Avatar";
-import { CURRENT_USER } from "@/lib/mock-data";
 import { useApp } from "@/lib/store";
 
 export function ComposeBox() {
-  const { addPost } = useApp();
+  const { addPost, currentUser } = useApp();
   const [content, setContent] = useState("");
 
   const handlePost = () => {
@@ -20,7 +19,7 @@ export function ComposeBox() {
   return (
     <div className="border-b border-border px-4 py-3">
       <div className="flex gap-3">
-        <Avatar name={CURRENT_USER.displayName} />
+        <Avatar name={currentUser?.displayName ?? "You"} />
         <div className="flex-1">
           <textarea
             placeholder="What's happening in Web4?"

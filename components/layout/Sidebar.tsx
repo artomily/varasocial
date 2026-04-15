@@ -12,7 +12,8 @@ import { useApp } from "@/lib/store";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { varaAIEnabled, toggleVaraAI, sidebarCollapsed, toggleSidebar } = useApp();
+  const { varaAIEnabled, toggleVaraAI, sidebarCollapsed, toggleSidebar, currentUser } = useApp();
+  const displayUser = currentUser ?? CURRENT_USER;
 
   return (
     <aside
@@ -129,14 +130,14 @@ export function Sidebar() {
             sidebarCollapsed ? "justify-center" : ""
           }`}
         >
-          <Avatar name={CURRENT_USER.displayName} />
+          <Avatar name={displayUser.displayName} />
           {!sidebarCollapsed && (
             <div className="min-w-0">
               <p className="truncate text-sm font-bold">
-                {CURRENT_USER.displayName}
+                {displayUser.displayName}
               </p>
               <p className="truncate text-sm text-secondary">
-                @{CURRENT_USER.handle}
+                @{displayUser.handle}
               </p>
             </div>
           )}

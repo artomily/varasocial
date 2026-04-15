@@ -8,7 +8,7 @@ import { useApp } from "@/lib/store";
 const TABS = ["For You", "Following", "Truth Verified"] as const;
 
 export function Feed() {
-  const { posts } = useApp();
+  const { posts, loading } = useApp();
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("For You");
 
   const filteredPosts =
@@ -46,9 +46,22 @@ export function Feed() {
 
       {/* Posts */}
       <div>
-        {filteredPosts.map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex gap-3 border-b border-border px-4 py-3 animate-pulse">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-surface" />
+              <div className="flex-1 space-y-2 pt-1">
+                <div className="h-3 w-32 rounded bg-surface" />
+                <div className="h-3 w-full rounded bg-surface" />
+                <div className="h-3 w-3/4 rounded bg-surface" />
+              </div>
+            </div>
+          ))
+        ) : (
+          filteredPosts.map((post) => (
+            <PostCard key={post.id} post={post} />
+          ))
+        )}
       </div>
     </div>
   );

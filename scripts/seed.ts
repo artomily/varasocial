@@ -27,7 +27,7 @@ function hoursAgo(h: number) {
 }
 
 const USERS = [
-  { id: "00000000-0000-0000-0000-000000000001", email: "satoshi@varasocial.dev", handle: "satoshi_web4", display_name: "Satoshi Nakamura", bio: "Building the decentralized future. Web4 maximalist.", wallet_address: "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b", verified: true, followers: 12400, following: 340 },
+  { id: "00000000-0000-0000-0000-000000000001", email: process.env.NEXT_PUBLIC_DEMO_EMAIL || "satoshi@varasocial.dev", handle: "satoshi_web4", display_name: "Satoshi Nakamura", bio: "Building the decentralized future. Web4 maximalist.", wallet_address: "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b", verified: true, followers: 12400, following: 340 },
   { id: "00000000-0000-0000-0000-000000000002", email: "aira@varasocial.dev", handle: "aira_deai", display_name: "Aira Chen", bio: "DeAI researcher @ 0G Labs. Content authenticity advocate.", wallet_address: "0x5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4", verified: true, followers: 8900, following: 512 },
   { id: "00000000-0000-0000-0000-000000000003", email: "varabuilder@varasocial.dev", handle: "vara_builder", display_name: "VaraDev.eth", bio: "Open source contributor. Building on VaraSocial.", wallet_address: "0x9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7", verified: false, followers: 3200, following: 890 },
   { id: "00000000-0000-0000-0000-000000000004", email: "maya@varasocial.dev", handle: "truthseeker99", display_name: "Maya Truth", bio: "Journalist. Fact-checker. Proven Truth early adopter.", wallet_address: "0x3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2", verified: true, followers: 21000, following: 180 },
@@ -53,6 +53,8 @@ const POSTS = [
 async function main() {
   console.log("🌱 Seeding VaraSocial...\n");
 
+  const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "Seed123!@#";
+
   // Step 1: Create auth users  
   console.log("🔑 Creating auth users...");  
   for (const u of USERS) {
@@ -60,7 +62,7 @@ async function main() {
     const { error } = await supabase.auth.admin.createUser({
       user_metadata: { handle: u.handle },
       email: u.email,
-      password: "Seed123!@#",
+      password: demoPassword,
       email_confirm: true,
     });
     

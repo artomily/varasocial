@@ -81,26 +81,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function init() {
       try {
-        // Sign in as the seeded demo account (satoshi_web4)
-        const { data: { user } } = await supabase.auth.signInWithPassword({
-          email: "satoshi@varasocial.dev",
-          password: "Seed123!@#",
-        });
+        const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL;
+        const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
 
-        if (user) {
-          const [profile, dbPosts, liked, reposted] = await Promise.all([
-            fetchUserById(user.id),
-            fetchPosts(),
-            fetchUserLikes(user.id),
-            fetchUserReposts(user.id),
-          ]);
+        // Sign in as the seeded demo account
+        if (demoEmail && demoPassword) {
+          const { data: { user } } = await supabase.auth.signInWithPassword({
+            email: demoEmail,
+            password: demoPassword,
+          });
 
-          setCurrentUser(profile);
-          setPosts(dbPosts.length > 0 ? dbPosts : MOCK_POSTS);
-          setLikedPosts(liked);
-          setRepostedPosts(reposted);
+          if (user) {
+            const [profile, dbPosts, liked, reposted] = await Promise.all([
+              fetchUserById(user.id),
+              fetchPosts(),
+              fetchUserLikes(user.id),
+              fetchUserReposts(user.id),
+            ]);
+
+            setCurrentUser(profile);
+            setPosts(dbPosts.length > 0 ? dbPosts : MOCK_POSTS);
+            setLikedPosts(liked);
+            setRepostedPosts(reposted);
+          } else {
+            // Supabase unavailable — fall back to mock data
+            setPosts(MOCK_POSTS);
+          }
         } else {
-          // Supabase unavailable — fall back to mock data
+          // Demo credentials not configured — use mock data
           setPosts(MOCK_POSTS);
         }
       } catch {

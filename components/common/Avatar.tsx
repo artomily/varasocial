@@ -21,9 +21,7 @@ export function Avatar({
     .toUpperCase();
 
   return (
-    <div
-      className={`${sizeMap[size]} flex shrink-0 items-center justify-center rounded-full bg-accent/20 font-semibold text-accent`}
-    >
+    <div className={`${sizeMap[size]} flex shrink-0 items-center justify-center rounded-full bg-white/10 font-semibold text-foreground`}>
       {initials || <UserIcon className="h-4 w-4" />}
     </div>
   );

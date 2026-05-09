@@ -17,7 +17,7 @@ export function Feed() {
       : posts;
 
   return (
-    <div>
+    <div className="pb-20 sm:pb-0">
       {/* Tabs */}
       <div className="sticky top-0 z-10 flex border-b border-border bg-background/80 backdrop-blur-md">
         {TABS.map((tab) => (

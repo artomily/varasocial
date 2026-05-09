@@ -51,6 +51,6 @@ export const TRUTH_COLORS = {
 
 export const BRAND = {
   name: "VaraSocial",
-  accent: "#1d9bf0",
+  accent: "#ff9500",
   token: "$VARA",
 } as const;

@@ -43,7 +43,7 @@ export function ComposeBox() {
             <button
               onClick={handlePost}
               disabled={!content.trim()}
-              className="rounded-full bg-accent px-5 py-1.5 text-sm font-bold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+              className="rounded-full bg-accent px-5 py-1.5 text-sm font-bold text-black transition-colors hover:bg-accent-hover disabled:opacity-50"
             >
               Post
             </button>

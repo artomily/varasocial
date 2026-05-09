@@ -56,7 +56,7 @@ export function Sidebar() {
                 href={item.href}
                 title={sidebarCollapsed ? item.label : undefined}
                 className={`group flex items-center gap-4 rounded-full px-3 py-3 text-xl transition-colors hover:bg-surface-hover ${
-                  sidebarCollapsed ? "justify-center" : "pr-6"
+                  sidebarCollapsed ? "justify-center" : "justify-start pr-6"
                 } ${isActive ? "font-bold text-foreground" : "text-foreground/80"}`}
               >
                 <Icon
@@ -71,7 +71,7 @@ export function Sidebar() {
 
         {/* Post button */}
         <button
-          className={`mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-accent py-3 text-base font-bold text-white transition-colors hover:bg-accent-hover ${
+          className={`mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-accent py-3 text-base font-bold text-black transition-colors hover:bg-accent-hover ${
             sidebarCollapsed ? "px-3" : "px-6"
           }`}
         >
@@ -111,7 +111,7 @@ export function Sidebar() {
               }`}
             >
               <div
-                className={`h-4 w-4 rounded-full bg-white transition-transform ${
+                className={`h-4 w-4 rounded-full bg-black transition-transform ${
                   varaAIEnabled ? "translate-x-4" : "translate-x-0"
                 }`}
               />

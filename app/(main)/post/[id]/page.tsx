@@ -2,7 +2,7 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Heart, MessageCircle, Repeat2, Share, Bookmark } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Repeat2, Share } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { MOCK_USERS } from "@/lib/mock-data";
 import { Avatar } from "@/components/common/Avatar";
@@ -36,11 +36,9 @@ export default function PostDetailPage({
     comments,
     likedPosts,
     repostedPosts,
-    bookmarkedPosts,
     varaAIEnabled,
     toggleLike,
     toggleRepost,
-    toggleBookmark,
     addComment,
     likeComment,
   } = useApp();
@@ -60,7 +58,6 @@ export default function PostDetailPage({
 
   const isLiked = likedPosts.has(post.id);
   const isReposted = repostedPosts.has(post.id);
-  const isBookmarked = bookmarkedPosts.has(post.id);
 
   const handleAddComment = () => {
     const trimmed = newComment.trim();
@@ -193,17 +190,6 @@ export default function PostDetailPage({
           </button>
           <button className="rounded-full p-2 text-secondary transition-colors hover:text-accent">
             <Share className="h-5 w-5" />
-          </button>
-          <button
-            onClick={() => toggleBookmark(post.id)}
-            className={`rounded-full p-2 transition-colors ${
-              isBookmarked ? "text-accent" : "text-secondary hover:text-accent"
-            }`}
-          >
-            <Bookmark
-              className="h-5 w-5"
-              fill={isBookmarked ? "currentColor" : "none"}
-            />
           </button>
         </div>
       </div>

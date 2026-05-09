@@ -36,7 +36,6 @@ interface AppState {
   loading: boolean;
   likedPosts: Set<string>;
   repostedPosts: Set<string>;
-  bookmarkedPosts: Set<string>;
   followingUsers: Set<string>;
   varaAIEnabled: boolean;
   sidebarCollapsed: boolean;
@@ -45,7 +44,6 @@ interface AppState {
 interface AppActions {
   toggleLike: (postId: string) => void;
   toggleRepost: (postId: string) => void;
-  toggleBookmark: (postId: string) => void;
   toggleFollow: (userId: string) => void;
   toggleVaraAI: () => void;
   toggleSidebar: () => void;
@@ -68,9 +66,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [repostedPosts, setRepostedPosts] = useState<Set<string>>(new Set());
-  const [bookmarkedPosts, setBookmarkedPosts] = useState<Set<string>>(
-    new Set()
-  );
   const [followingUsers, setFollowingUsers] = useState<Set<string>>(
     new Set()
   );
@@ -167,15 +162,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       else upsertRepost(postId, currentUser.id);
     }
   }, [repostedPosts, currentUser]);
-
-  const toggleBookmark = useCallback((postId: string) => {
-    setBookmarkedPosts((prev) => {
-      const next = new Set(prev);
-      if (next.has(postId)) next.delete(postId);
-      else next.add(postId);
-      return next;
-    });
-  }, []);
 
   const toggleFollow = useCallback((userId: string) => {
     setFollowingUsers((prev) => {
@@ -300,13 +286,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loading,
         likedPosts,
         repostedPosts,
-        bookmarkedPosts,
         followingUsers,
         varaAIEnabled,
         sidebarCollapsed,
         toggleLike,
         toggleRepost,
-        toggleBookmark,
         toggleFollow,
         toggleVaraAI,
         toggleSidebar,

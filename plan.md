@@ -144,7 +144,6 @@ These routes exist but render empty or stub content. Implementation is tracked s
 | `/monetize` | 🔲 Empty | $VARA earnings dashboard + claim flow |
 | `/notifications` | 🔲 Mock data | Wire to Supabase Realtime (see §6) |
 | `/messages` | 🔲 Local state | Wire to Supabase Realtime (see §6) |
-| `/bookmarks` | 🔲 Local state | Persist bookmarks to Supabase `bookmarks` table |
 | `/explore` | ⚠️ Partial | Search UI present, no full-text search backend |
 
 ---

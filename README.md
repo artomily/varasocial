@@ -10,7 +10,7 @@ Web4 social platform powered by [0G Decentralized Storage](https://0g.ai), Vara 
 |---------|--------|
 | Post feed (For You / Following / Truth Verified tabs) | ✅ Done |
 | Compose posts with optimistic updates | ✅ Done |
-| Like, repost, bookmark | ✅ Done |
+| Like, repost | ✅ Done |
 | User profiles | ✅ Done |
 | AI Truth Score badge on every post | ⚠️ Random placeholder — needs AI API |
 | Virality Score | ✅ Done (mock) |
@@ -92,7 +92,6 @@ app/
     post/[id]     # Single post + comments
     messages/     # DMs
     notifications/
-    bookmarks/
     socialflow/   # 🔲 Viral trends graph
     ai-filter/    # 🔲 Feed filter by AI tags
     mode-turu/    # 🔲 Scheduled post queue

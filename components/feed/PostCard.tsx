@@ -6,7 +6,6 @@ import {
   Repeat2,
   Heart,
   Share,
-  Bookmark,
 } from "lucide-react";
 import type { Post } from "@/lib/types";
 import { Avatar } from "@/components/common/Avatar";
@@ -34,16 +33,13 @@ export function PostCard({ post }: { post: Post }) {
   const {
     likedPosts,
     repostedPosts,
-    bookmarkedPosts,
     toggleLike,
     toggleRepost,
-    toggleBookmark,
     varaAIEnabled,
   } = useApp();
 
   const isLiked = likedPosts.has(post.id);
   const isReposted = repostedPosts.has(post.id);
-  const isBookmarked = bookmarkedPosts.has(post.id);
 
   return (
     <article className="flex gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/50">
@@ -166,18 +162,6 @@ export function PostCard({ post }: { post: Post }) {
 
           <button className="group flex items-center gap-1.5 rounded-full p-2 text-secondary transition-colors hover:text-accent">
             <Share className="h-4.5 w-4.5" />
-          </button>
-
-          <button
-            onClick={() => toggleBookmark(post.id)}
-            className={`group flex items-center gap-1.5 rounded-full p-2 transition-colors ${
-              isBookmarked ? "text-accent" : "text-secondary hover:text-accent"
-            }`}
-          >
-            <Bookmark
-              className="h-4.5 w-4.5"
-              fill={isBookmarked ? "currentColor" : "none"}
-            />
           </button>
         </div>
       </div>

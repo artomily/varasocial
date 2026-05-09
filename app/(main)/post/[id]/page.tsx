@@ -56,6 +56,7 @@ export default function PostDetailPage({
   const postComments = comments.filter((c) => c.postId === id);
   const aiComment = postComments.find((c) => c.isAI);
   const userComments = postComments.filter((c) => !c.isAI);
+  const showAIAnalytics = varaAIEnabled;
 
   const isLiked = likedPosts.has(post.id);
   const isReposted = repostedPosts.has(post.id);
@@ -133,11 +134,13 @@ export default function PostDetailPage({
         )}
 
         {/* Badges */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <TruthBadge level={post.truthLevel} score={post.truthScore} />
-          <ViralityScore score={post.viralityScore} />
-          {post.varaReward && <VaraReward amount={post.varaReward} />}
-        </div>
+        {showAIAnalytics && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <TruthBadge level={post.truthLevel} score={post.truthScore} />
+            <ViralityScore score={post.viralityScore} />
+            {post.varaReward && <VaraReward amount={post.varaReward} />}
+          </div>
+        )}
 
         {/* Timestamp */}
         <p className="mt-3 text-sm text-secondary">
@@ -228,7 +231,7 @@ export default function PostDetailPage({
       </div>
 
       {/* VaraAI Analysis — pinned at top of comments */}
-      {varaAIEnabled && aiComment && (
+      {showAIAnalytics && aiComment && (
         <div className="border-b border-border bg-accent/5 px-4 py-3">
           <div className="flex gap-3">
             <div className="relative">
@@ -302,7 +305,7 @@ export default function PostDetailPage({
         </div>
       ))}
 
-      {userComments.length === 0 && !aiComment && (
+      {userComments.length === 0 && (!aiComment || !showAIAnalytics) && (
         <div className="p-8 text-center text-secondary">
           No comments yet. Be the first to reply!
         </div>

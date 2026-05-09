@@ -2,17 +2,17 @@
 
 :root {
   --background: #000000;
-  --foreground: #f5e0c8;
-  --surface: #110b05;
-  --surface-hover: #1d1209;
-  --accent: #ff9500;
-  --accent-hover: #e67f00;
-  --border: #2a1a08;
-  --secondary: #7a654f;
+  --foreground: #f0eaff;
+  --surface: #1b0f30;
+  --surface-hover: #261544;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --border: #3a235c;
+  --secondary: #9f8dc5;
   --truth-valid: #00ba7c;
-  --truth-suspicious: #ffd400;
+  --truth-suspicious: #c084fc;
   --truth-hoax: #f4212e;
-  --vara-reward: #d97706;
+  --vara-reward: #a855f7;
 }
 
 @theme inline {

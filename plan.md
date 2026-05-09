@@ -140,7 +140,6 @@ These routes exist but render empty or stub content. Implementation is tracked s
 |-------|--------|-------|
 | `/socialflow` | 🔲 Empty | Trending topics / viral post graph |
 | `/ai-filter` | 🔲 Empty | Filter feed by truth level, topic, AI tags |
-| `/proven-truth` | 🔲 Empty | Feed of posts with `truthLevel === "valid"` |
 | `/mode-turu` | 🔲 Empty | "Sleep mode" / scheduled posting queue |
 | `/monetize` | 🔲 Empty | $VARA earnings dashboard + claim flow |
 | `/notifications` | 🔲 Mock data | Wire to Supabase Realtime (see §6) |

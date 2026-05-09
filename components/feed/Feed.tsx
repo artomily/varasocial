@@ -5,16 +5,13 @@ import { PostCard } from "./PostCard";
 import { ComposeBox } from "./ComposeBox";
 import { useApp } from "@/lib/store";
 
-const TABS = ["For You", "Following", "Truth Verified"] as const;
+const TABS = ["For You", "Following",] as const;
 
 export function Feed() {
   const { posts, loading } = useApp();
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("For You");
 
-  const filteredPosts =
-    activeTab === "Truth Verified"
-      ? posts.filter((p) => p.truthLevel === "valid" && p.truthScore >= 80)
-      : posts;
+  const filteredPosts = posts;
 
   return (
     <div className="pb-20 sm:pb-0">

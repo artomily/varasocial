@@ -21,7 +21,6 @@ Web4 social platform powered by [0G Decentralized Storage](https://0g.ai), Vara 
 | 0G decentralized media storage | 🔴 Not started |
 | SocialFlow page | 🔲 Empty |
 | AI Filter page | 🔲 Empty |
-| Proven Truth page | 🔲 Empty |
 | Mode Turu page | 🔲 Empty |
 | Monetize / $VARA earnings dashboard | 🔲 Empty |
 
@@ -96,7 +95,6 @@ app/
     bookmarks/
     socialflow/   # 🔲 Viral trends graph
     ai-filter/    # 🔲 Feed filter by AI tags
-    proven-truth/ # 🔲 Truth-verified feed
     mode-turu/    # 🔲 Scheduled post queue
     monetize/     # 🔲 $VARA earnings dashboard
     settings/

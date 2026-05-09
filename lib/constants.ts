@@ -25,7 +25,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Explore", href: "/explore", icon: Search },
   { label: "SocialFlow", href: "/socialflow", icon: TrendingUp },
   { label: "AI Filter", href: "/ai-filter", icon: SlidersHorizontal },
-  { label: "Proven Truth", href: "/proven-truth", icon: ShieldCheck },
   { label: "Mode Turu", href: "/mode-turu", icon: Bot },
   { label: "Notifications", href: "/notifications", icon: Bell },
   { label: "Messages", href: "/messages", icon: Mail },
@@ -45,12 +44,12 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
 
 export const TRUTH_COLORS = {
   valid: "#00ba7c",
-  suspicious: "#ffd400",
+  suspicious: "#c084fc",
   hoax: "#f4212e",
 } as const;
 
 export const BRAND = {
   name: "VaraSocial",
-  accent: "#ff9500",
+  accent: "#7c3aed",
   token: "$VARA",
 } as const;

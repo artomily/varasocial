@@ -17,9 +17,7 @@ export function TruthBadge({
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        level === "suspicious" ? "text-black" : "text-white"
-      } ${color}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${color}`}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {score} · {label}

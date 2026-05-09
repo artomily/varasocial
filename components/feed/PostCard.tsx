@@ -38,6 +38,7 @@ export function PostCard({ post }: { post: Post }) {
     toggleLike,
     toggleRepost,
     toggleBookmark,
+    varaAIEnabled,
   } = useApp();
 
   const isLiked = likedPosts.has(post.id);
@@ -122,11 +123,13 @@ export function PostCard({ post }: { post: Post }) {
         )}
 
 
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <TruthBadge level={post.truthLevel} score={post.truthScore} />
-          <ViralityScore score={post.viralityScore} />
-          {post.varaReward && <VaraReward amount={post.varaReward} />}
-        </div>
+        {varaAIEnabled && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <TruthBadge level={post.truthLevel} score={post.truthScore} />
+            <ViralityScore score={post.viralityScore} />
+            {post.varaReward && <VaraReward amount={post.varaReward} />}
+          </div>
+        )}
 
         {/* Action bar */}
         <div className="-ml-2 mt-2 flex items-center justify-between max-w-md">

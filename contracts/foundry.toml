@@ -1,0 +1,18 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+evm_version = "cancun"
+solc_version = "0.8.24"
+optimizer = true
+optimizer_runs = 200
+
+[rpc_endpoints]
+og_testnet = "${OG_TESTNET_RPC_URL}"
+og_mainnet = "${OG_MAINNET_RPC_URL}"
+
+[etherscan]
+og_testnet = { key = "${OG_ETHERSCAN_API_KEY}", url = "https://chainscan-galileo.0g.ai/open/api" }
+og_mainnet = { key = "${OG_ETHERSCAN_API_KEY}", url = "https://chainscan.0g.ai/open/api" }

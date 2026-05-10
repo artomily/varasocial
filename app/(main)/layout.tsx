@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { RightPanel } from "@/components/layout/RightPanel";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { AppProvider } from "@/lib/store";
+import { OnboardingGate } from "@/components/layout/OnboardingGate";
 
 export default function MainLayout({
   children,
@@ -11,6 +12,7 @@ export default function MainLayout({
   return (
     <AppProvider>
       <div className="mx-auto flex min-h-screen max-w-316.25">
+        <OnboardingGate />
         {/* Left sidebar — hidden on mobile */}
         <div className="hidden sm:flex">
           <Sidebar />

@@ -1,14 +1,13 @@
 "use client";
 
 import { Calendar, LinkIcon } from "lucide-react";
-import { CURRENT_USER } from "@/lib/mock-data";
 import { useApp } from "@/lib/store";
 import { Avatar } from "@/components/common/Avatar";
 import { PostCard } from "@/components/feed/PostCard";
 
 export default function ProfilePage() {
-  const { posts } = useApp();
-  const userPosts = posts.filter((p) => p.author.id === CURRENT_USER.id);
+  const { posts, currentUser } = useApp();
+  const userPosts = posts.filter((p) => currentUser && p.author.id === currentUser.id);
 
   return (
     <div>
@@ -19,21 +18,21 @@ export default function ProfilePage() {
       <div className="border-b border-border px-4 pb-4">
         <div className="-mt-16 mb-3 flex items-end justify-between">
           <div className="rounded-full border-4 border-background">
-            <Avatar name={CURRENT_USER.displayName} size="lg" />
+            <Avatar name={currentUser?.displayName ?? "User"} size="lg" />
           </div>
           <button className="rounded-full border border-border px-4 py-1.5 text-sm font-bold transition-colors hover:bg-surface-hover">
             Edit profile
           </button>
         </div>
 
-        <h1 className="text-xl font-bold">{CURRENT_USER.displayName}</h1>
-        <p className="text-sm text-secondary">@{CURRENT_USER.handle}</p>
-        <p className="mt-2 text-[15px]">{CURRENT_USER.bio}</p>
+        <h1 className="text-xl font-bold">{currentUser?.displayName ?? "Anonymous"}</h1>
+        <p className="text-sm text-secondary">@{currentUser?.handle ?? "—"}</p>
+        <p className="mt-2 text-[15px]">{currentUser?.bio}</p>
 
         <div className="mt-3 flex flex-wrap gap-4 text-sm text-secondary">
           <span className="flex items-center gap-1">
             <LinkIcon className="h-4 w-4" />
-            {CURRENT_USER.walletAddress}
+            {currentUser?.walletAddress}
           </span>
           <span className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
@@ -43,11 +42,11 @@ export default function ProfilePage() {
 
         <div className="mt-3 flex gap-4 text-sm">
           <span>
-            <span className="font-bold">{CURRENT_USER.following.toLocaleString()}</span>{" "}
+            <span className="font-bold">{(currentUser?.following ?? 0).toLocaleString()}</span>{" "}
             <span className="text-secondary">Following</span>
           </span>
           <span>
-            <span className="font-bold">{CURRENT_USER.followers.toLocaleString()}</span>{" "}
+            <span className="font-bold">{(currentUser?.followers ?? 0).toLocaleString()}</span>{" "}
             <span className="text-secondary">Followers</span>
           </span>
         </div>

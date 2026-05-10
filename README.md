@@ -15,14 +15,15 @@ Web4 social platform powered by [0G Decentralized Storage](https://0g.ai), Vara 
 | AI Truth Score badge on every post | ⚠️ Random placeholder — needs AI API |
 | Virality Score | ✅ Done (mock) |
 | $VARA reward display | ⚠️ Mock — needs Vara contract |
-| Wallet connect (RainbowKit) | ⚠️ Needs WalletConnect project ID |
+| Wallet connect (RainbowKit + Wagmi) | ⚠️ Needs WalletConnect project ID |
 | Direct messages | ⚠️ Local state — needs Supabase Realtime |
 | Notifications | ⚠️ Mock — needs Supabase Realtime |
 | 0G decentralized media storage | 🔴 Not started |
 | SocialFlow page | 🔲 Empty |
 | AI Filter page | 🔲 Empty |
 | Mode Turu page | 🔲 Empty |
-| Monetize / $VARA earnings dashboard | 🔲 Empty |
+| Monetize / $VARA earnings dashboard | 🔶 In progress |
+| Ads setup page | 🔶 In progress |
 
 ---
 
@@ -77,6 +78,21 @@ See [plan.md](./plan.md) for the full integration checklist with step-by-step in
 4. Vara Network ($VARA token rewards) — 🔴 not started
 5. AI Truth Scoring API — 🔴 not started
 6. Supabase Realtime (live feed, DMs, notifications) — 🔴 not started
+
+## Data Flow
+
+```mermaid
+flowchart LR
+  A[User uploads media in VaraSocial] --> B[Upload file to 0G Storage]
+  B --> C[0G returns storage route / content hash]
+  C --> D[Store route + wallet address + username + post metadata in Supabase]
+  D --> E[Website fetches posts and routes from Supabase]
+  E --> F[Render feed, profile, monetize, and ads UI]
+  D -. future .-> G[Cron job validates created_at = today]
+  G -. future .-> H[Backup to custom smart contract]
+```
+
+Current implementation treats Supabase as the source of truth for web reads. 0G Storage is the backup layer for uploaded media, and the onchain backup/cron path is intentionally deferred.
 
 ---
 

@@ -1,15 +1,54 @@
+"use client";
+
 import {
   BadgeCheck,
   DollarSign,
   Bot,
   TrendingUp,
-  Lock,
   CheckCircle2,
   Zap,
   Info,
   Wallet,
+  ShieldCheck,
+  Megaphone,
 } from "lucide-react";
-import { CURRENT_USER } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { useApp } from "@/lib/store";
+import { fetchSubscriptionPlans } from "@/lib/supabase-queries";
+import type { SubscriptionPlan } from "@/lib/types";
+
+const FALLBACK_PLANS: SubscriptionPlan[] = [
+  {
+    id: "starter",
+    slug: "starter",
+    title: "Starter Blue",
+    price: 25,
+    billingCycle: "month",
+    benefits: ["Blue check", "VaraAI access"],
+    featured: false,
+    active: true,
+  },
+  {
+    id: "creator",
+    slug: "creator",
+    title: "Creator Blue",
+    price: 50,
+    billingCycle: "month",
+    benefits: ["Blue check", "VaraAI", "AI filter agent", "Ad filter", "Creator earnings"],
+    featured: true,
+    active: true,
+  },
+  {
+    id: "studio",
+    slug: "studio",
+    title: "Studio Blue",
+    price: 100,
+    billingCycle: "month",
+    benefits: ["All Creator benefits", "Priority support", "Advanced ad controls"],
+    featured: false,
+    active: true,
+  },
+];
 
 const MOCK_PAYOUTS = [
   { id: 1, date: "Apr 1, 2026", amount: 45.2, posts: 3, status: "paid" },
@@ -42,7 +81,16 @@ const AI_CRITERIA = [
 ];
 
 export default function MonetizePage() {
-  const isVerified = CURRENT_USER.verified;
+  const { currentUser, userSubscription, subscribePlan, saveAdPreference } = useApp();
+  const [plans, setPlans] = useState<SubscriptionPlan[]>(FALLBACK_PLANS);
+
+  useEffect(() => {
+    fetchSubscriptionPlans().then((loadedPlans) => {
+      if (loadedPlans.length > 0) setPlans(loadedPlans);
+    });
+  }, []);
+
+  const isVerified = Boolean(currentUser?.verified || userSubscription);
 
   return (
     <div>
@@ -54,24 +102,56 @@ export default function MonetizePage() {
 
       {/* Locked state — shown to unverified users */}
       {!isVerified && (
-        <div className="flex flex-col items-center gap-6 px-6 py-16 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-surface">
-            <Lock className="h-10 w-10 text-secondary" />
+        <div className="border-b border-border px-4 py-6">
+          <div className="rounded-[28px] border border-border bg-surface/80 p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/15 text-accent">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Choose your Blue plan</h2>
+                <p className="text-sm text-secondary">
+                  Non-subscribers will see ads. Blue users unlock VaraAI, AI filter agent, ad filter, and earning eligibility.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {plans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className={`rounded-3xl border p-4 ${plan.featured ? "border-accent bg-accent/10" : "border-border bg-background/50"}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold">{plan.title}</p>
+                        {plan.featured && (
+                          <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                            Popular
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-secondary">{plan.price} VARA / {plan.billingCycle}</p>
+                    </div>
+                    <button
+                      onClick={() => subscribePlan(plan.id)}
+                      className="rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+                    >
+                      Subscribe
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-secondary">
+                    {plan.benefits.map((benefit) => (
+                      <span key={benefit} className="rounded-full border border-border bg-background/70 px-2.5 py-1">
+                        {benefit}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold">Verification Required</h2>
-            <p className="mt-2 max-w-sm text-secondary">
-              To monetize your content, you need a blue checkmark. Verified
-              creators can earn $VARA based on AI-evaluated post quality.
-            </p>
-          </div>
-          <button className="flex items-center gap-2 rounded-full bg-accent px-8 py-3 font-bold text-white transition-colors hover:bg-accent-hover">
-            <BadgeCheck className="h-5 w-5" />
-            Get Verified — 50 $VARA
-          </button>
-          <p className="text-xs text-secondary">
-            One-time fee · Non-refundable · Processed via smart contract
-          </p>
         </div>
       )}
 
@@ -126,7 +206,7 @@ export default function MonetizePage() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-secondary">Connected wallet</p>
                 <p className="truncate font-mono text-sm">
-                  {CURRENT_USER.walletAddress}
+                  {currentUser?.walletAddress ?? "Connect wallet first"}
                 </p>
               </div>
               <button className="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs transition-colors hover:bg-surface-hover">
@@ -165,6 +245,23 @@ export default function MonetizePage() {
               VaraAI automatically scores every post. No manual applications —
               qualifying posts receive $VARA at each monthly cycle.
             </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={() => saveAdPreference({ hideAds: true, filterAiAds: true })}
+                className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs font-semibold transition-colors hover:bg-surface-hover"
+              >
+                <Megaphone className="h-4 w-4" />
+                Hide ads
+              </button>
+              <button
+                onClick={() => saveAdPreference({ hideAds: false, filterAiAds: true })}
+                className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs font-semibold transition-colors hover:bg-surface-hover"
+              >
+                <Bot className="h-4 w-4" />
+                AI filter ads
+              </button>
+            </div>
           </div>
 
           {/* Payout history */}

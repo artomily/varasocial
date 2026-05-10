@@ -134,6 +134,43 @@ async function main() {
   }
 
   console.log(`\n✅ Done! Seeded ${USERS.length} users + ${count} posts.`);
+
+  // Step 5: Seed subscription_plans
+  console.log("\n💳 Seeding subscription_plans...");
+  const plans = [
+    {
+      id: "00000000-0000-0000-0000-000000000010",
+      name: "Starter Blue",
+      price_vara: 25,
+      interval: "month",
+      features: ["Blue checkmark", "Ad-free experience", "Earnings eligibility", "AI Content Filter"],
+      is_active: true,
+      sort_order: 1,
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000011",
+      name: "Creator Blue",
+      price_vara: 50,
+      interval: "month",
+      features: ["All Starter features", "VaraAI assistant", "Creator analytics", "Priority support", "Custom profile badge"],
+      is_active: true,
+      sort_order: 2,
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000012",
+      name: "Studio Blue",
+      price_vara: 100,
+      interval: "month",
+      features: ["All Creator features", "Ads campaign manager", "Team collaboration", "API access", "Dedicated account manager"],
+      is_active: true,
+      sort_order: 3,
+    },
+  ];
+  for (const plan of plans) {
+    process.stdout.write(`  → ${plan.name}... `);
+    const { error } = await supabase.from("subscription_plans").upsert(plan, { onConflict: "id" });
+    console.log(error ? `⚠ ${error.message}` : "✓");
+  }
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

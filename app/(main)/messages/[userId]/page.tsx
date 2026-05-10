@@ -4,7 +4,7 @@ import { use, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Send } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { MOCK_USERS, CURRENT_USER } from "@/lib/mock-data";
+import { MOCK_USERS } from "@/lib/mock-data";
 import { Avatar } from "@/components/common/Avatar";
 
 function formatTime(ts: string) {
@@ -20,7 +20,7 @@ export default function DMChatPage({
   params: Promise<{ userId: string }>;
 }) {
   const { userId } = use(params);
-  const { conversations, sendMessage } = useApp();
+  const { conversations, sendMessage, currentUser } = useApp();
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -79,7 +79,7 @@ export default function DMChatPage({
 
         <div className="space-y-3">
           {messages.map((msg) => {
-            const isMine = msg.senderId === CURRENT_USER.id;
+            const isMine = msg.senderId === currentUser?.id;
             return (
               <div
                 key={msg.id}

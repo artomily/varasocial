@@ -1,4 +1,8 @@
-import { SlidersHorizontal, Brain, Shield, Globe } from "lucide-react";
+"use client";
+
+import { SlidersHorizontal, Brain, Shield, Globe, Star } from "lucide-react";
+import Link from "next/link";
+import { useApp } from "@/lib/store";
 
 const models = [
   { name: "DeepSeek", description: "Best for multi-language content", active: true },
@@ -13,6 +17,35 @@ const filters = [
 ];
 
 export default function AIFilterPage() {
+  const { userSubscription } = useApp();
+  const isBlue = !!userSubscription;
+
+  if (!isBlue) {
+    return (
+      <div>
+        <div className="sticky top-0 z-10 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md">
+          <h1 className="text-xl font-bold">DeAI Content Filter</h1>
+          <p className="text-sm text-secondary">Blue plan feature</p>
+        </div>
+        <div className="flex flex-col items-center px-6 py-16 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
+            <Star className="h-8 w-8 text-accent" />
+          </div>
+          <h2 className="mb-2 text-xl font-bold">Blue Plan Required</h2>
+          <p className="mb-6 text-secondary">
+            AI Content Filter is exclusive to Blue subscribers. Choose your AI model, control your
+            feed with no platform algorithm.
+          </p>
+          <Link
+            href="/monetize"
+            className="rounded-full bg-accent px-6 py-2.5 font-bold text-white transition-colors hover:bg-accent/90"
+          >
+            Get Blue Plan
+          </Link>
+        </div>
+      </div>
+    );
+  }
   return (
     <div>
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md">

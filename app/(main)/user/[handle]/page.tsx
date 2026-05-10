@@ -4,7 +4,7 @@ import { use } from "react";
 import Link from "next/link";
 import { ArrowLeft, Calendar, LinkIcon } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { MOCK_USERS, CURRENT_USER } from "@/lib/mock-data";
+import { MOCK_USERS } from "@/lib/mock-data";
 import { Avatar } from "@/components/common/Avatar";
 import { PostCard } from "@/components/feed/PostCard";
 
@@ -14,7 +14,7 @@ export default function UserProfilePage({
   params: Promise<{ handle: string }>;
 }) {
   const { handle } = use(params);
-  const { posts, followingUsers, toggleFollow } = useApp();
+  const { posts, currentUser, followingUsers, toggleFollow } = useApp();
 
   const user = MOCK_USERS.find((u) => u.handle === handle);
   if (!user) {
@@ -23,7 +23,7 @@ export default function UserProfilePage({
     );
   }
 
-  const isCurrentUser = user.id === CURRENT_USER.id;
+  const isCurrentUser = !!(currentUser && user.id === currentUser.id);
   const isFollowing = followingUsers.has(user.id);
   const userPosts = posts.filter((p) => p.author.id === user.id);
 

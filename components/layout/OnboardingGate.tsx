@@ -9,7 +9,7 @@ import { useApp } from "@/lib/store";
 export function OnboardingGate() {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
-  const { currentUser, completeUsername } = useApp();
+  const { currentUser, completeUsername, loading } = useApp();
   const [handle, setHandle] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -20,13 +20,14 @@ export function OnboardingGate() {
   }, [currentUser]);
 
   const needsConnect = !isConnected || !address;
-  const needsUsername = Boolean(address) && Boolean(currentUser) && !currentUser?.usernameSetAt;
-  
+  const waitingForProfile = Boolean(address) && isConnected && loading && !currentUser;
+  const needsUsername = Boolean(address) && isConnected && !loading && !!currentUser && !currentUser.usernameSetAt;
+
   const handleConnectWallet = () => {
     connect({ connector: injected() });
   };
 
-  if (!needsConnect && !needsUsername) return null;
+  if (!needsConnect && !waitingForProfile && !needsUsername) return null;
 
   const submitUsername = async () => {
     const nextHandle = handle.trim();
@@ -65,6 +66,13 @@ export function OnboardingGate() {
                 Connect Wallet
               </button>
             </div>
+          </div>
+        )}
+
+        {waitingForProfile && (
+          <div className="rounded-2xl border border-border bg-background/60 p-4">
+            <p className="mb-1 text-sm font-semibold">Step 2 · Preparing profile</p>
+            <p className="text-sm text-secondary">Wallet connected. We are creating your account before you choose a username.</p>
           </div>
         )}
 

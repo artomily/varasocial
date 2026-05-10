@@ -6,8 +6,10 @@ import { Avatar } from "@/components/common/Avatar";
 import { PostCard } from "@/components/feed/PostCard";
 
 export default function ProfilePage() {
-  const { posts, currentUser } = useApp();
+  const { posts, currentUser, loading } = useApp();
   const userPosts = posts.filter((p) => currentUser && p.author.id === currentUser.id);
+  const profileName = currentUser?.displayName || currentUser?.handle || (currentUser?.walletAddress ? `${currentUser.walletAddress.slice(0, 6)}...${currentUser.walletAddress.slice(-4)}` : "Your profile");
+  const profileHandle = currentUser?.handle || (loading ? "loading" : "setup-username");
 
   return (
     <div>
@@ -18,15 +20,15 @@ export default function ProfilePage() {
       <div className="border-b border-border px-4 pb-4">
         <div className="-mt-16 mb-3 flex items-end justify-between">
           <div className="rounded-full border-4 border-background">
-            <Avatar name={currentUser?.displayName ?? "User"} size="lg" />
+            <Avatar name={profileName} size="lg" />
           </div>
           <button className="rounded-full border border-border px-4 py-1.5 text-sm font-bold transition-colors hover:bg-surface-hover">
             Edit profile
           </button>
         </div>
 
-        <h1 className="text-xl font-bold">{currentUser?.displayName ?? "Anonymous"}</h1>
-        <p className="text-sm text-secondary">@{currentUser?.handle ?? "—"}</p>
+        <h1 className="text-xl font-bold">{profileName}</h1>
+        <p className="text-sm text-secondary">@{profileHandle}</p>
         <p className="mt-2 text-[15px]">{currentUser?.bio}</p>
 
         <div className="mt-3 flex flex-wrap gap-4 text-sm text-secondary">

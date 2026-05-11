@@ -44,11 +44,11 @@ export default function ProfilePage() {
 
         <div className="mt-3 flex gap-4 text-sm">
           <span>
-            <span className="font-bold">{(currentUser?.following ?? 0).toLocaleString()}</span>{" "}
+            <span className="font-bold">0</span>{" "}
             <span className="text-secondary">Following</span>
           </span>
           <span>
-            <span className="font-bold">{(currentUser?.followers ?? 0).toLocaleString()}</span>{" "}
+            <span className="font-bold">0</span>{" "}
             <span className="text-secondary">Followers</span>
           </span>
         </div>

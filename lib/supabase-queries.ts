@@ -22,8 +22,6 @@ type UserRow = {
   verified: boolean;
   wallet_address: string;
   bio: string | null;
-  followers: number;
-  following: number;
   wallet_connected_at: string | null;
   username_set_at: string | null;
 };
@@ -41,6 +39,7 @@ type PostRow = {
   likes_count: number;
   reposts_count: number;
   replies_count: number;
+  route_hash: string | null;
   users: UserRow;
 };
 
@@ -78,6 +77,7 @@ type AdCampaignRow = {
   budget: string;
   placements: string[];
   status: string;
+  route_hash: string | null;
 };
 
 type PostStorageRouteRow = {
@@ -108,8 +108,6 @@ export function mapUserRow(row: UserRow): User {
     verified: row.verified,
     walletAddress: row.wallet_address,
     bio: row.bio ?? undefined,
-    followers: row.followers,
-    following: row.following,
     walletConnectedAt: row.wallet_connected_at ?? undefined,
     usernameSetAt: row.username_set_at ?? undefined,
   };
@@ -129,6 +127,7 @@ function mapPostRow(row: PostRow): Post {
     truthLevel: row.truth_level as TruthLevel,
     viralityScore: row.virality_score,
     varaReward: row.vara_reward ?? undefined,
+    routeHash: row.route_hash ?? undefined,
   };
 }
 
@@ -185,6 +184,7 @@ function mapAdCampaignRow(row: AdCampaignRow): AdCampaign {
     budget: Number(row.budget),
     placements: row.placements ?? [],
     status: row.status,
+    routeHash: row.route_hash ?? undefined,
   };
 }
 

@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { PostCard } from "./PostCard";
 import { ComposeBox } from "./ComposeBox";
+import { AdSlotCard } from "./AdSlotCard";
 import { useApp } from "@/lib/store";
 
 const TABS = ["For You", "Following",] as const;
 
 export function Feed() {
-  const { posts, loading } = useApp();
+  const { posts, loading, userSubscription } = useApp();
+  const showAds = !userSubscription;
+  const AD_INTERVAL = 5;
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("For You");
 
   const filteredPosts = posts;
@@ -55,8 +58,13 @@ export function Feed() {
             </div>
           ))
         ) : (
-          filteredPosts.map((post) => (
-            <PostCard key={post.id} post={post} />
+          filteredPosts.map((post, i) => (
+            <div key={post.id}>
+              <PostCard post={post} />
+              {showAds && (i + 1) % AD_INTERVAL === 0 && (
+                <AdSlotCard placement="feed" />
+              )}
+            </div>
           ))
         )}
       </div>

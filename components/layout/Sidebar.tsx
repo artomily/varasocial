@@ -3,17 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Feather, ChevronLeft, ChevronRight } from "lucide-react";
-import { NAV_ITEMS } from "@/lib/constants";
+import { MAIN_NAV_ITEMS } from "@/lib/constants";
 import { Logo } from "@/components/common/Logo";
 import { WalletButton } from "@/components/common/WalletButton";
 import { Avatar } from "@/components/common/Avatar";
-import { CURRENT_USER } from "@/lib/mock-data";
 import { useApp } from "@/lib/store";
+import { MoreMenu } from "@/components/layout/MoreMenu";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { varaAIEnabled, toggleVaraAI, sidebarCollapsed, toggleSidebar, currentUser } = useApp();
-  const displayUser = currentUser ?? CURRENT_USER;
 
   return (
     <aside
@@ -42,8 +41,8 @@ export function Sidebar() {
         </div>
 
         {/* Nav items */}
-        <nav className="mt-1 flex flex-1 flex-col gap-0.5 overflow-y-auto">
-          {NAV_ITEMS.map((item) => {
+        <nav className="mt-1 flex flex-col gap-0.5">
+          {MAIN_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive =
               item.href === "/"
@@ -68,6 +67,9 @@ export function Sidebar() {
             );
           })}
         </nav>
+
+        {/* More menu */}
+        <MoreMenu collapsed={sidebarCollapsed} />
 
         {/* Post button */}
         <button
@@ -130,15 +132,21 @@ export function Sidebar() {
             sidebarCollapsed ? "justify-center" : ""
           }`}
         >
-          <Avatar name={displayUser.displayName} />
-          {!sidebarCollapsed && (
+          <Avatar name={currentUser?.displayName ?? "Connect Wallet"} />
+          {!sidebarCollapsed && currentUser && (
             <div className="min-w-0">
               <p className="truncate text-sm font-bold">
-                {displayUser.displayName}
+                {currentUser.displayName}
               </p>
               <p className="truncate text-sm text-secondary">
-                @{displayUser.handle}
+                @{currentUser.handle}
               </p>
+            </div>
+          )}
+          {!sidebarCollapsed && !currentUser && (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold">Connect wallet</p>
+              <p className="truncate text-sm text-secondary">Create username to unlock posting</p>
             </div>
           )}
         </div>

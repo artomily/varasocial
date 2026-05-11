@@ -10,6 +10,8 @@ export interface User {
   bio?: string;
   followers: number;
   following: number;
+  walletConnectedAt?: string;
+  usernameSetAt?: string;
 }
 
 export type MediaItem = { type: "image" | "video"; url: string };
@@ -66,4 +68,52 @@ export interface Notification {
   postId?: string;
   timestamp: string;
   read: boolean;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  slug: string;
+  title: string;
+  price: number;
+  billingCycle: string;
+  benefits: string[];
+  featured: boolean;
+  active: boolean;
+}
+
+export interface UserSubscription {
+  userId: string;
+  planId: string;
+  status: string;
+  startsAt: string;
+  endsAt?: string;
+}
+
+export interface UserAdPreference {
+  userId: string;
+  hideAds: boolean;
+  filterAiAds: boolean;
+  sponsoredFeedInterval: number;
+}
+
+export interface AdCampaign {
+  id: string;
+  ownerId: string;
+  title: string;
+  objective: string;
+  budget: number;
+  placements: string[];
+  status: string;
+}
+
+export interface PostStorageRoute {
+  postId: string;
+  storageProvider: string;
+  storageRoute: string;
+  previewUrl?: string;
+}
+
+export interface OnboardingState {
+  walletConnected: boolean;
+  usernameSet: boolean;
 }

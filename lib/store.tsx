@@ -8,31 +8,39 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
+import { useAccount } from "wagmi";
 import type { Post, User, Comment, Conversation } from "@/lib/types";
 import {
   MOCK_POSTS,
   MOCK_COMMENTS,
   MOCK_CONVERSATIONS,
 } from "@/lib/mock-data";
-import { supabase } from "@/lib/supabase";
 import {
   fetchPosts,
-  fetchUserById,
+  ensureUserByWallet,
   fetchUserLikes,
   fetchUserReposts,
+  fetchUserSubscription,
+  fetchUserAdPreference,
   insertPost,
   insertComment,
+  saveUserSubscription,
+  saveUserAdPreference,
+  updateUsername,
   upsertLike,
   deleteLike,
   upsertRepost,
   deleteRepost,
 } from "@/lib/supabase-queries";
+import type { UserAdPreference, UserSubscription } from "@/lib/types";
 
 interface AppState {
   posts: Post[];
   comments: Comment[];
   conversations: Conversation[];
   currentUser: User | null;
+  userSubscription: UserSubscription | null;
+  adPreference: UserAdPreference | null;
   loading: boolean;
   likedPosts: Set<string>;
   repostedPosts: Set<string>;
@@ -49,6 +57,11 @@ interface AppActions {
   toggleSidebar: () => void;
   addComment: (postId: string, content: string) => void;
   addPost: (content: string) => void;
+  completeUsername: (handle: string) => Promise<void>;
+  subscribePlan: (planId: string) => Promise<void>;
+  saveAdPreference: (
+    preference: Partial<Omit<UserAdPreference, "userId">>,
+  ) => Promise<void>;
   sendMessage: (userId: string, text: string) => void;
   likeComment: (commentId: string) => void;
 }
@@ -57,12 +70,31 @@ type AppContextType = AppState & AppActions;
 
 const AppContext = createContext<AppContextType | null>(null);
 
-export function AppProvider({ children }: { children: ReactNode }) {
+function AppProviderWithWallet({ children }: { children: ReactNode }) {
+  const { address, isConnected } = useAccount();
+  return (
+    <AppProviderCore address={address} isConnected={isConnected}>
+      {children}
+    </AppProviderCore>
+  );
+}
+
+function AppProviderCore({
+  children,
+  address,
+  isConnected,
+}: {
+  children: ReactNode;
+  address?: string;
+  isConnected: boolean;
+}) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
   const [conversations, setConversations] =
     useState<Conversation[]>(MOCK_CONVERSATIONS);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
+  const [adPreference, setAdPreference] = useState<UserAdPreference | null>(null);
   const [loading, setLoading] = useState(true);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [repostedPosts, setRepostedPosts] = useState<Set<string>>(new Set());
@@ -72,49 +104,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [varaAIEnabled, setVaraAIEnabled] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Bootstrap: sign in as demo seed user + load real Supabase data
+  // Bootstrap: load public data and resolve the wallet-linked profile when connected
   useEffect(() => {
+    let canceled = false;
+
     async function init() {
+      setLoading(true);
       try {
-        const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL;
-        const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
+        const dbPosts = await fetchPosts();
+        if (canceled) return;
 
-        // Sign in as the seeded demo account
-        if (demoEmail && demoPassword) {
-          const { data: { user } } = await supabase.auth.signInWithPassword({
-            email: demoEmail,
-            password: demoPassword,
-          });
+        setPosts(dbPosts.length > 0 ? dbPosts : MOCK_POSTS);
 
-          if (user) {
-            const [profile, dbPosts, liked, reposted] = await Promise.all([
-              fetchUserById(user.id),
-              fetchPosts(),
-              fetchUserLikes(user.id),
-              fetchUserReposts(user.id),
-            ]);
+        if (!isConnected || !address) {
+          setCurrentUser(null);
+          setUserSubscription(null);
+          setAdPreference(null);
+          return;
+        }
 
-            setCurrentUser(profile);
-            setPosts(dbPosts.length > 0 ? dbPosts : MOCK_POSTS);
-            setLikedPosts(liked);
-            setRepostedPosts(reposted);
-          } else {
-            // Supabase unavailable — fall back to mock data
-            setPosts(MOCK_POSTS);
-          }
-        } else {
-          // Demo credentials not configured — use mock data
-          setPosts(MOCK_POSTS);
+        const profile = await ensureUserByWallet(address);
+        if (canceled) return;
+
+        if (profile) {
+          const [liked, reposted, subscription, preference] = await Promise.all([
+            fetchUserLikes(profile.id),
+            fetchUserReposts(profile.id),
+            fetchUserSubscription(profile.id),
+            fetchUserAdPreference(profile.id),
+          ]);
+
+          setCurrentUser(profile);
+          setLikedPosts(liked);
+          setRepostedPosts(reposted);
+          setUserSubscription(subscription);
+          setAdPreference(preference);
         }
       } catch {
         setPosts(MOCK_POSTS);
       } finally {
-        setLoading(false);
+        if (!canceled) setLoading(false);
       }
     }
 
     init();
-  }, []);
+    return () => {
+      canceled = true;
+    };
+  }, [address, isConnected]);
 
   const toggleLike = useCallback((postId: string) => {
     const isLiked = likedPosts.has(postId);
@@ -215,7 +252,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addPost = useCallback(
     (content: string) => {
-      if (!currentUser) return;
+      if (!currentUser || !currentUser.usernameSetAt) return;
 
       // Optimistic prepend
       const tempId = `temp-${Date.now()}`;
@@ -243,6 +280,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     },
     [currentUser]
+  );
+
+  const completeUsername = useCallback(
+    async (handle: string) => {
+      if (!currentUser) return;
+      const updated = await updateUsername(currentUser.id, handle);
+      if (updated) setCurrentUser(updated);
+    },
+    [currentUser],
+  );
+
+  const subscribePlan = useCallback(
+    async (planId: string) => {
+      if (!currentUser) return;
+      const subscription = await saveUserSubscription(currentUser.id, planId);
+      if (subscription) {
+        setUserSubscription(subscription);
+        setCurrentUser((prev) => (prev ? { ...prev, verified: true } : prev));
+      }
+    },
+    [currentUser],
+  );
+
+  const saveAdPreference = useCallback(
+    async (preference: Partial<Omit<UserAdPreference, "userId">>) => {
+      if (!currentUser) return;
+      const saved = await saveUserAdPreference(currentUser.id, preference);
+      if (saved) setAdPreference(saved);
+    },
+    [currentUser],
   );
 
   const sendMessage = useCallback(
@@ -283,6 +350,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         comments,
         conversations,
         currentUser,
+        userSubscription,
+        adPreference,
         loading,
         likedPosts,
         repostedPosts,
@@ -296,6 +365,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toggleSidebar,
         addComment,
         addPost,
+        completeUsername,
+        subscribePlan,
+        saveAdPreference,
         sendMessage,
         likeComment,
       }}
@@ -303,6 +375,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       {children}
     </AppContext.Provider>
   );
+}
+
+export function AppProvider({ children }: { children: ReactNode }) {
+  return <AppProviderWithWallet>{children}</AppProviderWithWallet>;
 }
 
 export function useApp() {

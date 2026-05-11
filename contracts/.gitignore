@@ -1,0 +1,14 @@
+# Foundry build artifacts
+/out/
+/cache/
+
+# Broadcast (contains tx hashes + private deployment data)
+/broadcast/*/
+!/broadcast/
+!/broadcast/.gitkeep
+
+# Environment variables — NEVER commit private keys
+.env
+
+# Foundry cache
+.forge-cache/

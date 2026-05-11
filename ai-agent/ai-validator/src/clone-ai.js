@@ -1,0 +1,99 @@
+import "dotenv/config";
+import { logger } from "./logger.js";
+
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+/**
+ * Build the full prompt following the master brief format:
+ *   SYSTEM: persona description
+ *   USER:   post context + thread context (last 5 comments) + new comment
+ *
+ * @param {object} user   - { display_name, handle, persona }
+ * @param {string} postContent
+ * @param {{ author_handle: string, content: string }[]} threadComments  - up to 5
+ * @param {string} newComment
+ */
+function buildPrompt(user, postContent, threadComments, newComment) {
+  const personaDesc =
+    user.persona ??
+    `Pengguna media sosial dengan nama ${user.display_name} (@${user.handle}).`;
+
+  const system =
+    `Anda adalah ${personaDesc}\n` +
+    `Anda sedang istirahat (Mode Turu). ` +
+    `Tugas: Balas komentar di bawah ini seolah-olah Anda yang mengetiknya sendiri.`;
+
+  const threadBlock =
+    threadComments.length > 0
+      ? threadComments
+          .map((c, i) => `${i + 1}. @${c.author_handle}: ${c.content}`)
+          .join("\n")
+      : "(belum ada komentar sebelumnya)";
+
+  const userMsg =
+    `### CONTEXT ###\n` +
+    `Postingan Anda: "${postContent}"\n\n` +
+    `Thread Terakhir (${threadComments.length} Komen):\n${threadBlock}\n\n` +
+    `### TARGET ###\n` +
+    `Komentar Baru: "${newComment}"\n\n` +
+    `### ATURAN ###\n` +
+    `- Balas maksimal 1 kalimat.\n` +
+    `- Harus nyambung dengan sejarah thread dan postingan asli.\n` +
+    `- Gunakan dialek/slang sesuai persona.\n` +
+    `- Jika komentar hanya emoji atau tidak penting, balas singkat atau gaya malas.\n` +
+    `- Jangan sebutkan bahwa Anda AI.\n` +
+    `- Balas HANYA teks balasan saja, tanpa format tambahan.`;
+
+  return { system, userMsg };
+}
+
+/**
+ * Generate an AI reply to a comment in the post author's persona.
+ *
+ * @param {{ display_name: string, handle: string, persona: string|null }} user
+ * @param {string} postContent
+ * @param {{ author_handle: string, content: string }[]} threadComments  Last 5 comments
+ * @param {string} newComment
+ * @returns {Promise<string>}
+ */
+export async function generateCloneReply(user, postContent, threadComments, newComment) {
+  const { system, userMsg } = buildPrompt(user, postContent, threadComments, newComment);
+
+  const response = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://varasocial.app",
+      "X-Title": "VaraSocial AI Clone",
+    },
+    body: JSON.stringify({
+      model: process.env.LLM_MODEL ?? "google/gemini-2.0-flash-exp",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: userMsg },
+      ],
+      temperature: 0.85,
+      max_tokens: 128,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`OpenRouter ${response.status}: ${body}`);
+  }
+
+  const json = await response.json();
+  const reply = json.choices?.[0]?.message?.content?.trim();
+
+  if (!reply) throw new Error("Empty reply from AI model");
+
+  logger.debug("Clone AI reply generated", {
+    user: user.handle,
+    newCommentPreview: newComment.slice(0, 50),
+    replyPreview: reply.slice(0, 80),
+  });
+
+  return reply;
+}
+

@@ -12,7 +12,7 @@ pragma solidity ^0.8.24;
  *  - user          : any wallet; manages their own hash, access list, and subscription.
  *
  * Subscription flow:
- *  1. User calls requestSubscription() with exact ETH → funds locked (PENDING).
+ *  1. User calls requestSubscription() with exact A0GI → funds locked (PENDING).
  *  2. Off-chain AI agent listens for SubscriptionRequested event, fetches data
  *     via getHash() → downloads from 0G Storage → validates.
  *  3. Operator calls processValidation(user, approved):
@@ -23,7 +23,7 @@ pragma solidity ^0.8.24;
  *
  * Ad placement flow:
  *  1. User uploads ad content to 0G Storage, gets a rootHash.
- *  2. User calls requestAdPlacement(adRootHash) with exact adPrice ETH → locked (PENDING).
+ *  2. User calls requestAdPlacement(adRootHash) with exact adPrice A0GI → locked (PENDING).
  *  3. Off-chain AI agent listens for AdRequested, downloads ad content, validates
  *     for SARA / racist / harmful material.
  *  4. Operator calls processAdValidation(user, approved):
@@ -71,11 +71,11 @@ contract StorageGatekeeper {
     /// @dev Company wallet/multisig that receives approved subscription payments.
     address public treasury;
 
-    /// @dev Required payment for requestSubscription(). Configurable by contractOwner.
-    uint256 public subscriptionPrice = 0.1 ether;
+    /// @dev Required payment for requestSubscription() in A0GI. Configurable by contractOwner.
+    uint256 public subscriptionPrice = 0.01 ether;
 
-    /// @dev Required payment for requestAdPlacement(). Configurable by contractOwner.
-    uint256 public adPrice = 0.01 ether;
+    /// @dev Required payment for requestAdPlacement() in A0GI. Configurable by contractOwner.
+    uint256 public adPrice = 0.001 ether;
 
     /// @dev user wallet => rootHash stored on 0G Storage
     mapping(address => bytes32) private _rootHashes;
@@ -103,7 +103,7 @@ contract StorageGatekeeper {
     event OperatorChanged(address indexed oldOperator, address indexed newOperator);
     event ContractOwnershipTransferred(address indexed oldOwner, address indexed newOwner);
 
-    /// @dev Emitted when a user locks ETH and requests AI validation.
+    /// @dev Emitted when a user locks A0GI and requests AI validation.
     event SubscriptionRequested(address indexed user, uint256 amount);
 
     /// @dev Emitted when the operator approves or rejects a subscription.
@@ -225,7 +225,7 @@ contract StorageGatekeeper {
 
     /**
      * @notice Called by the operator after the off-chain AI agent completes subscription validation.
-     * @dev    Follows Checks-Effects-Interactions: status updated before ETH transfer.
+     * @dev    Follows Checks-Effects-Interactions: status updated before A0GI transfer.
      * @param user     The wallet whose subscription is being decided.
      * @param approved true → forward funds to treasury; false → refund user.
      */
@@ -253,7 +253,7 @@ contract StorageGatekeeper {
     /**
      * @notice Called by the operator after off-chain AI content moderation of an ad.
      *         Checks for SARA / racist / harmful material.
-     * @dev    Follows Checks-Effects-Interactions: status updated before ETH transfer.
+     * @dev    Follows Checks-Effects-Interactions: status updated before A0GI transfer.
      * @param user     The wallet whose ad is being decided.
      * @param approved true → ad is clean, forward funds to treasury; false → reject + refund.
      */
@@ -285,7 +285,7 @@ contract StorageGatekeeper {
     /**
      * @notice Pay the subscription fee and request AI validation (Escrow).
      *         Funds are locked in the contract until processValidation() is called.
-     * @dev    Must send exactly `subscriptionPrice` wei.
+     * @dev    Must send exactly `subscriptionPrice` neuron (A0GI smallest unit).
      */
     function requestSubscription() external payable {
         require(msg.value == subscriptionPrice, "StorageGatekeeper: incorrect payment amount");

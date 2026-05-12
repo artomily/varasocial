@@ -70,7 +70,7 @@ export async function getUserPosts(walletAddress) {
 export async function setAdProcessing(campaignId) {
   const { error } = await supabase
     .from("ad_campaigns")
-    .update({ ai_status: "processing" })
+    .update({ verified: "processing" })
     .eq("id", campaignId);
 
   if (error) {
@@ -90,7 +90,7 @@ export async function updateAdStatus(campaignId, isSafe, reason, txHash) {
     .from("ad_campaigns")
     .update({
       status: isSafe ? "active" : "rejected",
-      ai_status: isSafe ? "approved" : "rejected",
+      verified: isSafe ? "approved" : "rejected",
       ai_report: reason ?? null,
       tx_hash: txHash,
     })
@@ -110,7 +110,7 @@ export async function updateAdStatus(campaignId, isSafe, reason, txHash) {
 export async function setUserProcessing(walletAddress) {
   const { error } = await supabase
     .from("users")
-    .update({ ai_status: "processing" })
+    .update({ verified: "processing" })
     .ilike("wallet_address", walletAddress);
 
   if (error) {
@@ -128,7 +128,7 @@ export async function updateUserStatus(walletAddress, isSafe, reason, txHash) {
   const { error } = await supabase
     .from("users")
     .update({
-      ai_status: isSafe ? "approved" : "rejected",
+      verified: isSafe ? "approved" : "rejected",
       ai_report: reason ?? null,
       tx_hash: txHash,
     })

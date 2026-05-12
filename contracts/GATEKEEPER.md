@@ -1,7 +1,7 @@
 # StorageGatekeeper — Reference & Integration Guide
 
 **Network:** 0G Chain Testnet (Galileo) — Chain ID `16602`  
-**Contract:** `0xB76C9629C140A6eeFadd99f95DdFed95913629cd`  
+**Contract:** `0x948F0ea80688E175d85D2B08418190AaB24db38d`  
 **Explorer:** https://chainscan-galileo.0g.ai/address/0xB76C9629C140A6eeFadd99f95DdFed95913629cd
 
 ---
@@ -192,21 +192,21 @@ console.log(req.amount, req.status, req.requestedAt);
 
 ### Grup 5: Ad Placement — Escrow + AI Content Moderation
 
-> User upload konten iklan ke 0G Storage terlebih dahulu, lalu submit hash-nya ke kontrak bersama pembayaran. AI server menvalidasi konten (SARA, rasis, berbahaya) sebelum iklan dipasang.
+> User mengambil UUID campaign dari Supabase (`ad_campaigns.id`), encode sebagai `bytes32`, lalu submit ke kontrak bersama pembayaran. AI server mendekode UUID dari event, query Supabase untuk konten campaign, lalu melakukan moderasi (SARA, rasis, berbahaya).
 
-#### `requestAdPlacement(bytes32 adRootHash)` — payable
+#### `requestAdPlacement(bytes32 campaignId)` — payable
 - **Dipanggil oleh:** User dari browser
-- **Kapan:** Setelah user upload konten iklan (gambar/video + caption) ke 0G Storage dan mendapat `adRootHash`
+- **Kapan:** Setelah campaign dibuat di DB (`ad_campaigns`) dan konten siap dimoderasi
 - **Browser:**
 ```js
-// 1. Upload konten iklan ke 0G Storage terlebih dahulu
-const adRootHash = await uploadToZeroGStorage(adFile);
+// Encode UUID sebagai bytes32 (16 bytes UUID + 16 bytes zero padding)
+const uuidToBytes32 = (uuid) => '0x' + uuid.replace(/-/g, '').padEnd(64, '0');
 
-// 2. Submit ke kontrak
+// Submit ke kontrak
 const price = await contract.adPrice();
-const tx = await contract.requestAdPlacement(adRootHash, { value: price });
+const tx = await contract.requestAdPlacement(uuidToBytes32(campaignId), { value: price });
 await tx.wait();
-// Server akan mendengar event AdRequested dan mulai validasi AI
+// Server akan mendengar event AdRequested(user, campaignId, amount) dan mulai validasi AI
 ```
 
 ---
@@ -247,12 +247,13 @@ if (req.status === 1n && now >= req.requestedAt + timeout) { // 1 = PENDING
 
 #### `adRequests(address user)` — public mapping
 - **Dipanggil oleh:** Server atau frontend, siapa pun (gratis)
-- **Return:** `{ adRootHash, amount, status, requestedAt }`
+- **Return:** `{ campaignId, amount, status, requestedAt }`
+  - `campaignId`: UUID encoded as bytes32
   - status: `0=NONE, 1=PENDING, 2=COMPLETED, 3=REFUNDED`
 - **Node.js:**
 ```js
 const req = await contract.adRequests(userWalletAddress);
-console.log(req.adRootHash, req.amount, req.status, req.requestedAt);
+console.log(req.campaignId, req.amount, req.status, req.requestedAt);
 ```
 
 ---
@@ -334,10 +335,10 @@ const ABI = [
   "function requests(address) external view returns (uint256 amount, uint8 status, uint256 requestedAt)",
   "function subscriptionPrice() external view returns (uint256)",
   // Ad placement / escrow
-  "function requestAdPlacement(bytes32 adRootHash) external payable",
+  "function requestAdPlacement(bytes32 campaignId) external payable",
   "function processAdValidation(address user, bool approved) external",
   "function withdrawExpiredAd() external",
-  "function adRequests(address) external view returns (bytes32 adRootHash, uint256 amount, uint8 status, uint256 requestedAt)",
+  "function adRequests(address) external view returns (bytes32 campaignId, uint256 amount, uint8 status, uint256 requestedAt)",
   "function adPrice() external view returns (uint256)",
   "function VALIDATION_TIMEOUT() external view returns (uint256)",
   // Admin
@@ -354,7 +355,7 @@ const ABI = [
   "event SubscriptionRequested(address indexed user, uint256 amount)",
   "event SubscriptionValidated(address indexed user, bool approved)",
   "event SubscriptionExpiredWithdrawn(address indexed user, uint256 amount)",
-  "event AdRequested(address indexed user, bytes32 indexed adRootHash, uint256 amount)",
+  "event AdRequested(address indexed user, bytes32 indexed campaignId, uint256 amount)",
   "event AdValidated(address indexed user, bool approved)",
   "event AdExpiredWithdrawn(address indexed user, uint256 amount)",
 ];
@@ -395,11 +396,15 @@ contract.on("SubscriptionRequested", async (user, amount) => {
 });
 
 // === Ad content moderation listener ===
-contract.on("AdRequested", async (user, adRootHash, amount) => {
-  console.log(`[Ad] New request from ${user}, adRootHash: ${adRootHash}`);
+contract.on("AdRequested", async (user, rawCampaignId, amount) => {
+  // Decode UUID dari bytes32: first 16 bytes = UUID hex, rest = zero-padding
+  const hex = rawCampaignId.replace(/^0x/, "").slice(0, 32);
+  const campaignId = [hex.slice(0,8), hex.slice(8,12), hex.slice(12,16), hex.slice(16,20), hex.slice(20,32)].join("-");
 
-  // 1. Download konten iklan dari 0G Storage pakai adRootHash
-  const adContent = await downloadFromZeroGStorage(adRootHash);
+  console.log(`[Ad] New request from ${user}, campaignId: ${campaignId}`);
+
+  // 1. Query Supabase langsung pakai campaignId (UUID)
+  const adContent = await supabase.from("ad_campaigns").select("title, objective").eq("id", campaignId).single();
 
   // 2. AI content moderation — cek SARA, rasis, kekerasan, dll
   const moderationResult = await moderateAdContent(adContent);
@@ -440,15 +445,16 @@ contract.on("AdRequested", async (user, adRootHash, amount) => {
 
 ### Ad Placement (Iklan)
 ```
-[Browser] upload konten iklan ke 0G Storage → dapat adRootHash
+[Browser] encode ad_campaigns.id (UUID) sebagai bytes32
           │
           ▼
-[Browser] requestAdPlacement(adRootHash) + ETH
+[Browser] requestAdPlacement(campaignId_as_bytes32) + ETH
           │
-          ▼ emit AdRequested
+          ▼ emit AdRequested(user, campaignId, amount)
 [Server]  listener menangkap event
           │
-          ├─ download konten iklan dari 0G Storage pakai adRootHash
+          ├─ decode bytes32 → UUID (campaignId)
+          ├─ query Supabase: ad_campaigns WHERE id = campaignId
           ├─ AI content moderation (SARA, rasis, kekerasan, dll)
           │
           ├─ aman    → processAdValidation(user, true)  → ETH ke treasury, iklan ditayangkan

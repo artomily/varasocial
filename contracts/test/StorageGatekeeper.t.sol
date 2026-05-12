@@ -618,7 +618,7 @@ contract StorageGatekeeperTest is Test {
     function test_requestAdPlacement_reverts_zero_hash() public {
         vm.deal(alice, 1 ether);
         vm.prank(alice);
-        vm.expectRevert("StorageGatekeeper: adRootHash cannot be zero");
+        vm.expectRevert("StorageGatekeeper: campaignId cannot be zero");
         gatekeeper.requestAdPlacement{value: 0.01 ether}(bytes32(0));
     }
 

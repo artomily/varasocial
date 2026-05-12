@@ -12,7 +12,7 @@ pragma solidity ^0.8.24;
  *  - user          : any wallet; manages their own hash, access list, and subscription.
  *
  * Subscription flow:
- *  1. User calls requestSubscription() with exact ETH → funds locked (PENDING).
+ *  1. User calls requestSubscription() with exact A0GI → funds locked (PENDING).
  *  2. Off-chain AI agent listens for SubscriptionRequested event, fetches data
  *     via getHash() → downloads from 0G Storage → validates.
  *  3. Operator calls processValidation(user, approved):
@@ -22,10 +22,11 @@ pragma solidity ^0.8.24;
  *     user can self-refund via withdrawExpired().
  *
  * Ad placement flow:
- *  1. User uploads ad content to 0G Storage, gets a rootHash.
- *  2. User calls requestAdPlacement(adRootHash) with exact adPrice ETH → locked (PENDING).
- *  3. Off-chain AI agent listens for AdRequested, downloads ad content, validates
- *     for SARA / racist / harmful material.
+ *  1. Browser encodes ad_campaigns UUID (from Supabase) as bytes32 and passes it
+ *     to requestAdPlacement(campaignId). No 0G Storage hash is involved here.
+ *  2. User calls requestAdPlacement(campaignId) with exact adPrice A0GI → locked (PENDING).
+ *  3. Off-chain AI agent listens for AdRequested, decodes campaignId from bytes32,
+ *     queries Supabase for campaign content, and validates for SARA / racist / harmful material.
  *  4. Operator calls processAdValidation(user, approved):
  *       true  → funds to treasury, status = COMPLETED (ad is shown).
  *       false → funds refunded, status = REFUNDED (ad rejected).
@@ -45,7 +46,7 @@ contract StorageGatekeeper {
     }
 
     struct AdRequest {
-        bytes32 adRootHash;  // rootHash of ad content stored on 0G Storage
+        bytes32 campaignId;  // ad_campaigns UUID encoded as bytes32 (UUID hex, zero-padded to 32 bytes)
         uint256 amount;
         RequestStatus status;
         uint256 requestedAt;
@@ -71,10 +72,10 @@ contract StorageGatekeeper {
     /// @dev Company wallet/multisig that receives approved subscription payments.
     address public treasury;
 
-    /// @dev Required payment for requestSubscription(). Configurable by contractOwner.
+    /// @dev Required payment for requestSubscription() in A0GI. Configurable by contractOwner.
     uint256 public subscriptionPrice = 0.1 ether;
 
-    /// @dev Required payment for requestAdPlacement(). Configurable by contractOwner.
+    /// @dev Required payment for requestAdPlacement() in A0GI. Configurable by contractOwner.
     uint256 public adPrice = 0.01 ether;
 
     /// @dev user wallet => rootHash stored on 0G Storage
@@ -103,7 +104,7 @@ contract StorageGatekeeper {
     event OperatorChanged(address indexed oldOperator, address indexed newOperator);
     event ContractOwnershipTransferred(address indexed oldOwner, address indexed newOwner);
 
-    /// @dev Emitted when a user locks ETH and requests AI validation.
+    /// @dev Emitted when a user locks A0GI and requests AI validation.
     event SubscriptionRequested(address indexed user, uint256 amount);
 
     /// @dev Emitted when the operator approves or rejects a subscription.
@@ -118,7 +119,8 @@ contract StorageGatekeeper {
     event AdPriceChanged(uint256 oldPrice, uint256 newPrice);
 
     /// @dev Emitted when a user submits an ad and locks payment.
-    event AdRequested(address indexed user, bytes32 indexed adRootHash, uint256 amount);
+    ///      campaignId is the ad_campaigns UUID encoded as bytes32 (first 16 bytes = UUID, rest zero-padded).
+    event AdRequested(address indexed user, bytes32 indexed campaignId, uint256 amount);
 
     /// @dev Emitted when the operator approves or rejects an ad after AI content check.
     ///      approved=true → funds to treasury + ad shown; approved=false → refund + ad rejected.
@@ -225,7 +227,7 @@ contract StorageGatekeeper {
 
     /**
      * @notice Called by the operator after the off-chain AI agent completes subscription validation.
-     * @dev    Follows Checks-Effects-Interactions: status updated before ETH transfer.
+     * @dev    Follows Checks-Effects-Interactions: status updated before A0GI transfer.
      * @param user     The wallet whose subscription is being decided.
      * @param approved true → forward funds to treasury; false → refund user.
      */
@@ -253,7 +255,7 @@ contract StorageGatekeeper {
     /**
      * @notice Called by the operator after off-chain AI content moderation of an ad.
      *         Checks for SARA / racist / harmful material.
-     * @dev    Follows Checks-Effects-Interactions: status updated before ETH transfer.
+     * @dev    Follows Checks-Effects-Interactions: status updated before A0GI transfer.
      * @param user     The wallet whose ad is being decided.
      * @param approved true → ad is clean, forward funds to treasury; false → reject + refund.
      */
@@ -285,7 +287,7 @@ contract StorageGatekeeper {
     /**
      * @notice Pay the subscription fee and request AI validation (Escrow).
      *         Funds are locked in the contract until processValidation() is called.
-     * @dev    Must send exactly `subscriptionPrice` wei.
+     * @dev    Must send exactly `subscriptionPrice` neuron (A0GI smallest unit).
      */
     function requestSubscription() external payable {
         require(msg.value == subscriptionPrice, "StorageGatekeeper: incorrect payment amount");
@@ -304,13 +306,14 @@ contract StorageGatekeeper {
     }
 
     /**
-     * @notice Submit an ad for placement. Upload ad content to 0G Storage first,
-     *         then pass the resulting rootHash. Payment is locked until AI validation.
+     * @notice Submit an ad for placement. Payment is locked until AI validation.
      * @dev    Must send exactly `adPrice` wei. One pending ad per wallet at a time.
-     * @param adRootHash rootHash of the ad content (image/video + caption) on 0G Storage.
+     *         Encoding: campaignId = bytes32(uuid_hex_without_dashes, zero_padded)
+     *         e.g. '550e8400-e29b-41d4-a716-446655440000' → 0x550e8400e29b41d4a716446655440000 + 16 zero bytes
+     * @param campaignId  ad_campaigns.id (UUID) encoded as bytes32 by the browser.
      */
-    function requestAdPlacement(bytes32 adRootHash) external payable {
-        require(adRootHash != bytes32(0), "StorageGatekeeper: adRootHash cannot be zero");
+    function requestAdPlacement(bytes32 campaignId) external payable {
+        require(campaignId != bytes32(0), "StorageGatekeeper: campaignId cannot be zero");
         require(msg.value == adPrice, "StorageGatekeeper: incorrect ad payment amount");
         require(
             adRequests[msg.sender].status != RequestStatus.PENDING,
@@ -318,13 +321,13 @@ contract StorageGatekeeper {
         );
 
         adRequests[msg.sender] = AdRequest({
-            adRootHash: adRootHash,
+            campaignId: campaignId,
             amount: msg.value,
             status: RequestStatus.PENDING,
             requestedAt: block.timestamp
         });
 
-        emit AdRequested(msg.sender, adRootHash, msg.value);
+        emit AdRequested(msg.sender, campaignId, msg.value);
     }
 
     /**

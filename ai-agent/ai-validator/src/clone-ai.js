@@ -2,6 +2,46 @@ import "dotenv/config";
 import { logger } from "./logger.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const FETCH_TIMEOUT_MS = 30_000;
+const MAX_RETRIES = 3;
+
+function isRetryable(err) {
+  return (
+    err.code === "ECONNRESET" ||
+    err.code === "ETIMEDOUT" ||
+    err.code === "UND_ERR_SOCKET" ||
+    err.name === "AbortError" ||
+    (typeof err.message === "string" && err.message.includes("socket hang up"))
+  );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * `fetch` wrapper with a hard timeout and exponential-backoff retry.
+ * Retries on transient network errors (ECONNRESET, AbortError, etc.).
+ */
+async function fetchWithRetry(url, options) {
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+      if (attempt === MAX_RETRIES - 1 || !isRetryable(err)) throw err;
+      const delay = 1_000 * 2 ** attempt;
+      logger.warn(`OpenRouter (clone) fetch failed (attempt ${attempt + 1}/${MAX_RETRIES}), retry in ${delay}ms`, {
+        error: err.message,
+      });
+      await sleep(delay);
+    }
+  }
+}
 
 /**
  * Build the full prompt following the master brief format:
@@ -59,7 +99,7 @@ function buildPrompt(user, postContent, threadComments, newComment) {
 export async function generateCloneReply(user, postContent, threadComments, newComment) {
   const { system, userMsg } = buildPrompt(user, postContent, threadComments, newComment);
 
-  const response = await fetch(OPENROUTER_URL, {
+  const response = await fetchWithRetry(OPENROUTER_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,

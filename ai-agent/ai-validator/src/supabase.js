@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import "dotenv/config";
 import { logger } from "./logger.js";
 
@@ -6,21 +7,21 @@ import { logger } from "./logger.js";
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY,
-  { auth: { persistSession: false } }
+  { auth: { persistSession: false }, realtime: { transport: ws } }
 );
 
 // ── Read helpers ───────────────────────────────────────────────────────────
 
 /**
- * Fetch ad campaign content by its on-chain rootHash.
- * @param {string} rootHash  — bytes32 hex string from AdRequested event
+ * Fetch ad campaign content by its UUID (primary key).
+ * @param {string} campaignId  — UUID from ad_campaigns.id
  * @returns {{ id: string, title: string, objective: string }}
  */
-export async function getAdContent(rootHash) {
+export async function getAdContent(campaignId) {
   const { data, error } = await supabase
     .from("ad_campaigns")
     .select("id, title, objective")
-    .eq("route_hash", rootHash)
+    .eq("id", campaignId)
     .single();
 
   if (error) {
@@ -64,16 +65,17 @@ export async function getUserPosts(walletAddress) {
 
 /**
  * Mark an ad campaign as 'processing' when the job starts.
+ * @param {string} campaignId  — UUID from ad_campaigns.id
  */
-export async function setAdProcessing(rootHash) {
+export async function setAdProcessing(campaignId) {
   const { error } = await supabase
     .from("ad_campaigns")
     .update({ ai_status: "processing" })
-    .eq("route_hash", rootHash);
+    .eq("id", campaignId);
 
   if (error) {
     logger.warn("supabase.setAdProcessing failed", {
-      rootHash,
+      campaignId,
       error: error.message,
     });
   }
@@ -81,20 +83,22 @@ export async function setAdProcessing(rootHash) {
 
 /**
  * Finalise ad campaign row after the AI + on-chain decision.
+ * @param {string} campaignId  — UUID from ad_campaigns.id
  */
-export async function updateAdStatus(rootHash, isSafe, reason, txHash) {
+export async function updateAdStatus(campaignId, isSafe, reason, txHash) {
   const { error } = await supabase
     .from("ad_campaigns")
     .update({
+      status: isSafe ? "active" : "rejected",
       ai_status: isSafe ? "approved" : "rejected",
       ai_report: reason ?? null,
       tx_hash: txHash,
     })
-    .eq("route_hash", rootHash);
+    .eq("id", campaignId);
 
   if (error) {
     logger.error("supabase.updateAdStatus failed", {
-      rootHash,
+      campaignId,
       error: error.message,
     });
   }

@@ -4,6 +4,28 @@ import { ABI } from "./abi.js";
 import { validationQueue } from "./queue.js";
 import { logger } from "./logger.js";
 
+/**
+ * Decode a UUID from a bytes32 value encoded by the browser.
+ *
+ * Encoding convention (browser):
+ *   const uuidToBytes32 = (uuid) => '0x' + uuid.replace(/-/g, '').padEnd(64, '0');
+ *
+ * The UUID occupies the first 16 bytes (32 hex chars); the rest are zero-padded.
+ *
+ * @param {string} bytes32Hex  — 0x-prefixed hex string from the contract event
+ * @returns {string}           — standard UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+ */
+function bytes32ToUuid(bytes32Hex) {
+  const hex = bytes32Hex.replace(/^0x/, "").slice(0, 32).toLowerCase();
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20, 32),
+  ].join("-");
+}
+
 // Default BullMQ job options applied to every enqueued validation.
 const JOB_OPTIONS = {
   attempts: 3,
@@ -24,17 +46,23 @@ export async function startListener() {
   const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, ABI, provider);
 
   // ── AdRequested ─────────────────────────────────────────────────────────
-  contract.on("AdRequested", async (user, adRootHash, amount, event) => {
+  //
+  // Convention: browser encodes ad_campaigns.id (UUID) as bytes32 before
+  // calling requestAdPlacement(). The contract stores it as-is and emits it
+  // back here. We decode directly — no Supabase round-trip needed.
+  contract.on("AdRequested", async (user, rawCampaignId, amount, event) => {
+    const campaignId = bytes32ToUuid(rawCampaignId);
+
     logger.info("Event: AdRequested", {
       user,
-      adRootHash,
+      campaignId,
       amount: amount.toString(),
       block: event.log?.blockNumber,
     });
 
     await validationQueue.add(
       "ad-validation",
-      { type: "AD", user, rootHash: adRootHash },
+      { type: "AD", user, campaignId },
       JOB_OPTIONS
     );
   });
@@ -49,7 +77,7 @@ export async function startListener() {
 
     await validationQueue.add(
       "subscription-validation",
-      { type: "SUBSCRIPTION", user, rootHash: null },
+      { type: "SUBSCRIPTION", user },
       JOB_OPTIONS
     );
   });

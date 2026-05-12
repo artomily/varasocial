@@ -4,7 +4,7 @@
  */
 export const ABI = [
   // ── Events (listener) ───────────────────────────────────────
-  "event AdRequested(address indexed user, bytes32 indexed adRootHash, uint256 amount)",
+  "event AdRequested(address indexed user, bytes32 indexed campaignId, uint256 amount)",
   "event SubscriptionRequested(address indexed user, uint256 amount)",
 
   // ── Operator write functions ─────────────────────────────────

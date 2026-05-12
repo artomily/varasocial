@@ -2,6 +2,46 @@ import "dotenv/config";
 import { logger } from "./logger.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const FETCH_TIMEOUT_MS = 30_000;
+const MAX_RETRIES = 3;
+
+function isRetryable(err) {
+  return (
+    err.code === "ECONNRESET" ||
+    err.code === "ETIMEDOUT" ||
+    err.code === "UND_ERR_SOCKET" ||
+    err.name === "AbortError" ||
+    (typeof err.message === "string" && err.message.includes("socket hang up"))
+  );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * `fetch` wrapper with a hard timeout and exponential-backoff retry.
+ * Retries on transient network errors (ECONNRESET, AbortError, etc.).
+ */
+async function fetchWithRetry(url, options) {
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+      if (attempt === MAX_RETRIES - 1 || !isRetryable(err)) throw err;
+      const delay = 1_000 * 2 ** attempt;
+      logger.warn(`OpenRouter fetch failed (attempt ${attempt + 1}/${MAX_RETRIES}), retry in ${delay}ms`, {
+        error: err.message,
+      });
+      await sleep(delay);
+    }
+  }
+}
 
 const SYSTEM_PROMPT =
   'Anda adalah moderator konten profesional. Tugas Anda mendeteksi SARA ' +
@@ -19,24 +59,35 @@ const SYSTEM_PROMPT =
  * @returns {Promise<{ is_safe: boolean, reason: string }>}
  */
 export async function checkSARA(text) {
-  const response = await fetch(OPENROUTER_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://varasocial.app",
-      "X-Title": "VaraSocial AI Validator",
-    },
-    body: JSON.stringify({
-      model: process.env.LLM_MODEL ?? "google/gemini-2.0-flash-exp",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: text },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0,
-    }),
-  });
+  let response;
+  try {
+    response = await fetchWithRetry(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://varasocial.app",
+        "X-Title": "VaraSocial AI Validator",
+      },
+      body: JSON.stringify({
+        model: process.env.LLM_MODEL ?? "google/gemini-2.0-flash-exp",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: text },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0,
+      }),
+    });
+  } catch (err) {
+    logger.error("OpenRouter unreachable after retries — treating as unsafe (refund will be issued)", {
+      error: err.message,
+    });
+    return {
+      is_safe: false,
+      reason: "AI service unreachable — treated as unsafe, fee refunded",
+    };
+  }
 
   if (!response.ok) {
     const body = await response.text();

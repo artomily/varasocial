@@ -20,16 +20,16 @@ import { logger } from "./logger.js";
  * BullMQ retries the job automatically on failure (up to `attempts` times).
  *
  * Job shape:
- *   { type: 'AD',           user: string, rootHash: string }
- *   { type: 'SUBSCRIPTION', user: string, rootHash: null   }
+ *   { type: 'AD',           user: string, campaignId: string }
+ *   { type: 'SUBSCRIPTION', user: string }
  */
 async function processJob(job) {
-  const { type, user, rootHash } = job.data;
-  logger.info("Job started", { jobId: job.id, type, user, rootHash });
+  const { type, user, campaignId } = job.data;
+  logger.info("Job started", { jobId: job.id, type, user, campaignId });
 
   // ── Step 1: mark as processing ──────────────────────────────
   if (type === "AD") {
-    await setAdProcessing(rootHash);
+    await setAdProcessing(campaignId);
   } else {
     await setUserProcessing(user);
   }
@@ -38,7 +38,7 @@ async function processJob(job) {
   let textToCheck;
 
   if (type === "AD") {
-    const ad = await getAdContent(rootHash);
+    const ad = await getAdContent(campaignId);
     textToCheck = `Title: ${ad.title}\n\nObjective: ${ad.objective}`;
   } else {
     const posts = await getUserPosts(user);
@@ -55,15 +55,27 @@ async function processJob(job) {
   }
 
   // ── Step 3: AI moderation ────────────────────────────────────
-  const { is_safe, reason } = await checkSARA(textToCheck);
-  logger.info("AI decision", { type, user, is_safe, reason: reason || "(safe)" });
+  // If the AI service errors out (network, timeout, parse failure),
+  // we default to is_safe=false so the contract can issue a refund.
+  // This prevents the user's fee being locked indefinitely.
+  let is_safe, reason;
+  try {
+    ({ is_safe, reason } = await checkSARA(textToCheck));
+    logger.info("AI decision", { type, user, is_safe, reason: reason || "(safe)" });
+  } catch (err) {
+    logger.error("AI moderation failed — defaulting to rejected (fee will be refunded)", {
+      type, user, error: err.message,
+    });
+    is_safe = false;
+    reason = `AI moderation error: ${err.message}`;
+  }
 
   // ── Step 4: on-chain execution ───────────────────────────────
   const txHash = await sendDecision(user, is_safe, type);
 
   // ── Step 5: sync result back to Supabase ────────────────────
   if (type === "AD") {
-    await updateAdStatus(rootHash, is_safe, reason, txHash);
+    await updateAdStatus(campaignId, is_safe, reason, txHash);
   } else {
     await updateUserStatus(user, is_safe, reason, txHash);
   }

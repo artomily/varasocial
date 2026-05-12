@@ -4,13 +4,38 @@ import { ABI } from "./abi.js";
 import { logger } from "./logger.js";
 
 // Lazily initialised singletons — re-used across all jobs in the process.
+// Reset to null on connection errors so they are re-created on the next call.
 let _provider = null;
 let _wallet = null;
 let _contract = null;
 
+function resetSingletons() {
+  _provider = null;
+  _wallet = null;
+  _contract = null;
+}
+
+function isRetryable(err) {
+  return (
+    err.code === "ECONNRESET" ||
+    err.code === "ETIMEDOUT" ||
+    err.code === "UND_ERR_SOCKET" ||
+    err.name === "AbortError" ||
+    (typeof err.message === "string" && err.message.includes("socket hang up"))
+  );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function getContract() {
   if (_contract) return _contract;
-  _provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+  _provider = new ethers.JsonRpcProvider(process.env.RPC_URL, undefined, {
+    staticNetwork: true,
+    polling: true,
+    pollingInterval: 4_000,
+  });
   _wallet = new ethers.Wallet(process.env.OPERATOR_PRIVATE_KEY, _provider);
   _contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, ABI, _wallet);
   return _contract;
@@ -28,35 +53,51 @@ function getContract() {
  * @returns {Promise<string>}    Confirmed transaction hash
  */
 export async function sendDecision(userAddress, isApproved, type) {
-  const contract = getContract();
+  const MAX_RETRIES = 3;
 
-  // Dynamic gas with a safety ceiling
-  const feeData = await _provider.getFeeData();
-  const rawGasPrice = feeData.gasPrice ?? ethers.parseUnits("5", "gwei");
-  const ceiling = ethers.parseUnits("10", "gwei");
-  const gasPrice =
-    ((rawGasPrice * 110n) / 100n) < ceiling
-      ? (rawGasPrice * 110n) / 100n
-      : ceiling;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const contract = getContract();
 
-  const overrides = { gasPrice };
+      // Dynamic gas with a safety ceiling
+      const feeData = await _provider.getFeeData();
+      const rawGasPrice = feeData.gasPrice ?? ethers.parseUnits("5", "gwei");
+      const ceiling = ethers.parseUnits("10", "gwei");
+      const gasPrice =
+        ((rawGasPrice * 110n) / 100n) < ceiling
+          ? (rawGasPrice * 110n) / 100n
+          : ceiling;
 
-  const tx =
-    type === "AD"
-      ? await contract.processAdValidation(userAddress, isApproved, overrides)
-      : await contract.processValidation(userAddress, isApproved, overrides);
+      const overrides = { gasPrice };
 
-  logger.info("Tx submitted", {
-    type,
-    user: userAddress,
-    isApproved,
-    hash: tx.hash,
-  });
+      const tx =
+        type === "AD"
+          ? await contract.processAdValidation(userAddress, isApproved, overrides)
+          : await contract.processValidation(userAddress, isApproved, overrides);
 
-  const receipt = await tx.wait(1);
-  logger.info("Tx confirmed", { hash: receipt.hash, block: receipt.blockNumber });
+      logger.info("Tx submitted", {
+        type,
+        user: userAddress,
+        isApproved,
+        hash: tx.hash,
+      });
 
-  return receipt.hash;
+      const receipt = await tx.wait(1);
+      logger.info("Tx confirmed", { hash: receipt.hash, block: receipt.blockNumber });
+
+      return receipt.hash;
+    } catch (err) {
+      if (attempt === MAX_RETRIES - 1 || !isRetryable(err)) throw err;
+
+      // Reset stale connection so getContract() re-initialises on next attempt
+      resetSingletons();
+      const delay = 2_000 * 2 ** attempt;
+      logger.warn(`RPC call failed (attempt ${attempt + 1}/${MAX_RETRIES}), resetting provider, retry in ${delay}ms`, {
+        error: err.message,
+      });
+      await sleep(delay);
+    }
+  }
 }
 
 /**
@@ -64,7 +105,9 @@ export async function sendDecision(userAddress, isApproved, type) {
  * Called on startup and can be scheduled periodically.
  */
 export async function checkBalance() {
-  const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+  const provider = new ethers.JsonRpcProvider(process.env.RPC_URL, undefined, {
+    staticNetwork: true,
+  });
   const wallet = new ethers.Wallet(process.env.OPERATOR_PRIVATE_KEY, provider);
   const balance = await provider.getBalance(wallet.address);
   const threshold = ethers.parseEther("0.05");

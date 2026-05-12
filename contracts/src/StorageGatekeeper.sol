@@ -22,10 +22,11 @@ pragma solidity ^0.8.24;
  *     user can self-refund via withdrawExpired().
  *
  * Ad placement flow:
- *  1. User uploads ad content to 0G Storage, gets a rootHash.
- *  2. User calls requestAdPlacement(adRootHash) with exact adPrice A0GI → locked (PENDING).
- *  3. Off-chain AI agent listens for AdRequested, downloads ad content, validates
- *     for SARA / racist / harmful material.
+ *  1. Browser encodes ad_campaigns UUID (from Supabase) as bytes32 and passes it
+ *     to requestAdPlacement(campaignId). No 0G Storage hash is involved here.
+ *  2. User calls requestAdPlacement(campaignId) with exact adPrice A0GI → locked (PENDING).
+ *  3. Off-chain AI agent listens for AdRequested, decodes campaignId from bytes32,
+ *     queries Supabase for campaign content, and validates for SARA / racist / harmful material.
  *  4. Operator calls processAdValidation(user, approved):
  *       true  → funds to treasury, status = COMPLETED (ad is shown).
  *       false → funds refunded, status = REFUNDED (ad rejected).
@@ -45,7 +46,7 @@ contract StorageGatekeeper {
     }
 
     struct AdRequest {
-        bytes32 adRootHash;  // rootHash of ad content stored on 0G Storage
+        bytes32 campaignId;  // ad_campaigns UUID encoded as bytes32 (UUID hex, zero-padded to 32 bytes)
         uint256 amount;
         RequestStatus status;
         uint256 requestedAt;
@@ -72,10 +73,10 @@ contract StorageGatekeeper {
     address public treasury;
 
     /// @dev Required payment for requestSubscription() in A0GI. Configurable by contractOwner.
-    uint256 public subscriptionPrice = 0.01 ether;
+    uint256 public subscriptionPrice = 0.1 ether;
 
     /// @dev Required payment for requestAdPlacement() in A0GI. Configurable by contractOwner.
-    uint256 public adPrice = 0.001 ether;
+    uint256 public adPrice = 0.01 ether;
 
     /// @dev user wallet => rootHash stored on 0G Storage
     mapping(address => bytes32) private _rootHashes;
@@ -118,7 +119,8 @@ contract StorageGatekeeper {
     event AdPriceChanged(uint256 oldPrice, uint256 newPrice);
 
     /// @dev Emitted when a user submits an ad and locks payment.
-    event AdRequested(address indexed user, bytes32 indexed adRootHash, uint256 amount);
+    ///      campaignId is the ad_campaigns UUID encoded as bytes32 (first 16 bytes = UUID, rest zero-padded).
+    event AdRequested(address indexed user, bytes32 indexed campaignId, uint256 amount);
 
     /// @dev Emitted when the operator approves or rejects an ad after AI content check.
     ///      approved=true → funds to treasury + ad shown; approved=false → refund + ad rejected.
@@ -304,13 +306,14 @@ contract StorageGatekeeper {
     }
 
     /**
-     * @notice Submit an ad for placement. Upload ad content to 0G Storage first,
-     *         then pass the resulting rootHash. Payment is locked until AI validation.
+     * @notice Submit an ad for placement. Payment is locked until AI validation.
      * @dev    Must send exactly `adPrice` wei. One pending ad per wallet at a time.
-     * @param adRootHash rootHash of the ad content (image/video + caption) on 0G Storage.
+     *         Encoding: campaignId = bytes32(uuid_hex_without_dashes, zero_padded)
+     *         e.g. '550e8400-e29b-41d4-a716-446655440000' → 0x550e8400e29b41d4a716446655440000 + 16 zero bytes
+     * @param campaignId  ad_campaigns.id (UUID) encoded as bytes32 by the browser.
      */
-    function requestAdPlacement(bytes32 adRootHash) external payable {
-        require(adRootHash != bytes32(0), "StorageGatekeeper: adRootHash cannot be zero");
+    function requestAdPlacement(bytes32 campaignId) external payable {
+        require(campaignId != bytes32(0), "StorageGatekeeper: campaignId cannot be zero");
         require(msg.value == adPrice, "StorageGatekeeper: incorrect ad payment amount");
         require(
             adRequests[msg.sender].status != RequestStatus.PENDING,
@@ -318,13 +321,13 @@ contract StorageGatekeeper {
         );
 
         adRequests[msg.sender] = AdRequest({
-            adRootHash: adRootHash,
+            campaignId: campaignId,
             amount: msg.value,
             status: RequestStatus.PENDING,
             requestedAt: block.timestamp
         });
 
-        emit AdRequested(msg.sender, adRootHash, msg.value);
+        emit AdRequested(msg.sender, campaignId, msg.value);
     }
 
     /**

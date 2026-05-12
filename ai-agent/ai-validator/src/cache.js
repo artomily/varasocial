@@ -5,12 +5,18 @@
  * Keys:
  *   clone:user:<authorId>   — user persona + profile (TTL 10 min)
  *   clone:post:<postId>     — post content (TTL 30 min)
+ *
+ * Set USE_CACHE=false in .env to disable caching entirely (always hit Supabase).
  */
 import { connection } from "./queue.js";
 import { logger } from "./logger.js";
 
 const TTL_USER = 60 * 10;   // 10 minutes
 const TTL_POST = 60 * 30;   // 30 minutes
+
+/** Runtime flag — can be toggled via USE_CACHE env var. */
+export const isCacheEnabled = () =>
+  (process.env.USE_CACHE ?? "true").toLowerCase() !== "false";
 
 /**
  * Get a cached value. Returns null on miss or error.
@@ -47,12 +53,36 @@ export async function invalidateUser(authorId) {
 }
 
 /**
+ * Flush all clone:* keys from Redis.
+ * Called by the cache-reset webhook.
+ */
+export async function flushCache() {
+  try {
+    const keys = await connection.keys("clone:*");
+    if (keys.length === 0) {
+      logger.info("Cache flush: no clone:* keys found");
+      return 0;
+    }
+    await connection.del(...keys);
+    logger.info("Cache flush: deleted keys", { count: keys.length });
+    return keys.length;
+  } catch (err) {
+    logger.warn("Cache flush error", { error: err.message });
+    throw err;
+  }
+}
+
+/**
  * Get-or-fetch the user profile needed for clone prompting.
  * @param {string} authorId
  * @param {Function} fetchFn  async () => userData
  */
 export async function cachedUser(authorId, fetchFn) {
   const key = `clone:user:${authorId}`;
+  if (!isCacheEnabled()) {
+    logger.debug("Cache disabled — fetching user directly", { authorId });
+    return fetchFn();
+  }
   const hit = await get(key);
   if (hit) return hit;
   const data = await fetchFn();
@@ -67,6 +97,10 @@ export async function cachedUser(authorId, fetchFn) {
  */
 export async function cachedPost(postId, fetchFn) {
   const key = `clone:post:${postId}`;
+  if (!isCacheEnabled()) {
+    logger.debug("Cache disabled — fetching post directly", { postId });
+    return fetchFn();
+  }
   const hit = await get(key);
   if (hit) return hit;
   const data = await fetchFn();

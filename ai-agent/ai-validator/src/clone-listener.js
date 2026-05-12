@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import "dotenv/config";
 import { cloneQueue } from "./queue.js";
+import { flushCache, isCacheEnabled } from "./cache.js";
 import { logger } from "./logger.js";
 
 const PORT = parseInt(process.env.WEBHOOK_PORT ?? "3100", 10);
@@ -57,7 +58,7 @@ function parseBody(body) {
 export function startCloneWebhook() {
   const server = createServer(async (req, res) => {
     // ── Route guard ──────────────────────────────────────────────────────────
-    if (req.method !== "POST" || req.url !== "/webhook/comment") {
+    if (req.method !== "POST" || ![ "/webhook/comment", "/webhook/cache-reset" ].includes(req.url)) {
       res.writeHead(404).end("Not Found");
       return;
     }
@@ -74,7 +75,26 @@ export function startCloneWebhook() {
       }
     }
 
-    // ── Read body ────────────────────────────────────────────────────────────
+    // ── Route: POST /webhook/cache-reset ─────────────────────────────────────
+    if (req.url === "/webhook/cache-reset") {
+      if (!isCacheEnabled()) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ flushed: 0, message: "Cache is disabled (USE_CACHE=false)" }));
+        return;
+      }
+      try {
+        const count = await flushCache();
+        logger.info("Webhook: cache reset triggered", { keysDeleted: count });
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ flushed: count }));
+      } catch (err) {
+        logger.error("Webhook: cache reset failed", { error: err.message });
+        res.writeHead(500).end("Internal Server Error");
+      }
+      return;
+    }
+
+    // ── Read body (only for /webhook/comment) ────────────────────────────────
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const payload = parseBody(Buffer.concat(chunks));

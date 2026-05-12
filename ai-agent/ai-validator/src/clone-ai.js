@@ -114,7 +114,8 @@ export async function generateCloneReply(user, postContent, threadComments, newC
         { role: "user", content: userMsg },
       ],
       temperature: 0.85,
-      max_tokens: 128,
+      max_tokens: 1024,
+      // max_tokens: 256,
     }),
   });
 
@@ -124,9 +125,27 @@ export async function generateCloneReply(user, postContent, threadComments, newC
   }
 
   const json = await response.json();
+  logger.debug("Raw OpenRouter response", { json: JSON.stringify(json) });
+
+  const finishReason = json.choices?.[0]?.finish_reason;
+  if (finishReason === "content_filter") {
+    logger.warn("Clone AI: content filtered by model, skipping reply", {
+      user: user.handle,
+      finishReason,
+    });
+    return null;
+  }
+
   const reply = json.choices?.[0]?.message?.content?.trim();
 
-  if (!reply) throw new Error("Empty reply from AI model");
+  if (!reply && finishReason === "length") {
+    logger.warn("Clone AI: model hit token limit with no output, increase max_tokens or shorten prompt", {
+      user: user.handle,
+    });
+    return null;
+  }
+
+  if (!reply) throw new Error(`Empty reply from AI model (finish_reason: ${finishReason ?? "unknown"})`);
 
   logger.debug("Clone AI reply generated", {
     user: user.handle,

@@ -5,6 +5,7 @@ import { startListener } from "./listener.js";
 import { startWorker } from "./worker.js";
 import { startCloneWebhook } from "./clone-listener.js";
 import { startCloneWorker } from "./clone-worker.js";
+import { startSyncScheduler } from "./sync-scheduler.js";
 
 // ── Required environment variables ──────────────────────────────────────────
 const REQUIRED_ENV = [
@@ -14,14 +15,7 @@ const REQUIRED_ENV = [
   "SUPABASE_URL",
   "SUPABASE_SERVICE_KEY",
   "OPENROUTER_API_KEY",
-];
-
-function validateEnv() {
-  const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
-  if (missing.length > 0) {
-    logger.error("Missing required environment variables", { missing });
-    process.exit(1);
-  }
+  "OG_INDEXER_RPC",
 }
 
 // ── Graceful shutdown ────────────────────────────────────────────────────────
@@ -55,6 +49,9 @@ async function main() {
 
   // Start the Supabase Realtime clone listener
   startCloneWebhook();
+
+  // Start the periodic user data sync → 0G Storage → setHashFor
+  startSyncScheduler();
 
   logger.info("AI Validator + AI Clone are live — listening for events");
 

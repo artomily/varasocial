@@ -11,43 +11,32 @@ import {
   Wallet,
   ShieldCheck,
   Megaphone,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useApp } from "@/lib/store";
-import { fetchSubscriptionPlans } from "@/lib/supabase-queries";
-import type { SubscriptionPlan } from "@/lib/types";
+import {
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useChainId,
+  useSwitchChain,
+} from "wagmi";
+import { zeroGGalileo } from "@/lib/wagmi-config";
+import { parseAbi } from "viem";
 
-const FALLBACK_PLANS: SubscriptionPlan[] = [
-  {
-    id: "starter",
-    slug: "starter",
-    title: "Starter Blue",
-    price: 25,
-    billingCycle: "month",
-    benefits: ["Blue check", "VaraAI access"],
-    featured: false,
-    active: true,
-  },
-  {
-    id: "creator",
-    slug: "creator",
-    title: "Creator Blue",
-    price: 50,
-    billingCycle: "month",
-    benefits: ["Blue check", "VaraAI", "AI filter agent", "Ad filter", "Creator earnings"],
-    featured: true,
-    active: true,
-  },
-  {
-    id: "studio",
-    slug: "studio",
-    title: "Studio Blue",
-    price: 100,
-    billingCycle: "month",
-    benefits: ["All Creator benefits", "Priority support", "Advanced ad controls"],
-    featured: false,
-    active: true,
-  },
+const CONTRACT_ADDRESS = "0x948F0ea80688E175d85D2B08418190AaB24db38d" as const;
+const CONTRACT_ABI = parseAbi([
+  "function subscriptionPrice() external view returns (uint256)",
+  "function requestSubscription() external payable",
+]);
+
+const BLUE_PLAN_BENEFITS = [
+  { label: "Blue check badge", icon: BadgeCheck },
+  { label: "VaraAI access", icon: Bot },
+  { label: "No ads", icon: Megaphone },
+  { label: "Creator earnings", icon: DollarSign },
 ];
 
 const MOCK_PAYOUTS = [
@@ -80,17 +69,102 @@ const AI_CRITERIA = [
   },
 ];
 
+function SubscribeButton({ onSuccess }: { onSuccess: () => void }) {
+  const chainId = useChainId();
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
+  const [txError, setTxError] = useState<string | null>(null);
+
+  const { data: price } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: "subscriptionPrice",
+    chainId: zeroGGalileo.id,
+  });
+
+  const { writeContract, data: txHash, isPending: isWriting } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash: txHash,
+    chainId: zeroGGalileo.id,
+  });
+
+  // Call onSuccess once tx is confirmed
+  if (isSuccess) {
+    onSuccess();
+  }
+
+  const onWrongChain = chainId !== zeroGGalileo.id;
+
+  const handleClick = () => {
+    setTxError(null);
+    if (onWrongChain) {
+      switchChain({ chainId: zeroGGalileo.id });
+      return;
+    }
+    if (price === undefined) return;
+    writeContract(
+      {
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: "requestSubscription",
+        value: price,
+        chainId: zeroGGalileo.id,
+      },
+      {
+        onError: (err) => setTxError(err.message.split("\n")[0]),
+      }
+    );
+  };
+
+  const busy = isSwitching || isWriting || isConfirming;
+  const label = onWrongChain
+    ? "Switch to 0G Network"
+    : isWriting
+    ? "Confirm in wallet…"
+    : isConfirming
+    ? "Confirming…"
+    : price !== undefined
+    ? `Subscribe · ${Number(price) / 1e18} OG`
+    : "Loading price…";
+
+  return (
+    <div className="mt-5 space-y-2">
+      <button
+        onClick={handleClick}
+        disabled={busy || price === undefined}
+        className="w-full rounded-full bg-foreground px-4 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+        {label}
+      </button>
+      {txError && (
+        <div className="flex items-start gap-2 rounded-xl bg-truth-hoax/10 p-3 text-xs text-truth-hoax">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>{txError}</span>
+        </div>
+      )}
+      {txHash && isConfirming && (
+        <p className="text-center text-xs text-secondary break-all">
+          Tx: {txHash}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function MonetizePage() {
   const { currentUser, userSubscription, subscribePlan, saveAdPreference } = useApp();
-  const [plans, setPlans] = useState<SubscriptionPlan[]>(FALLBACK_PLANS);
-
-  useEffect(() => {
-    fetchSubscriptionPlans().then((loadedPlans) => {
-      if (loadedPlans.length > 0) setPlans(loadedPlans);
-    });
-  }, []);
+  const [pendingOnChain, setPendingOnChain] = useState(false);
 
   const isVerified = Boolean(currentUser?.verified || userSubscription);
+
+  // Called after on-chain tx confirmed — sync to Supabase
+  const handleSubscribeSuccess = () => {
+    if (!pendingOnChain) {
+      setPendingOnChain(true);
+      subscribePlan("blue");
+    }
+  };
 
   return (
     <div>
@@ -109,48 +183,39 @@ export default function MonetizePage() {
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Choose your Blue plan</h2>
+                <h2 className="text-xl font-bold">Get Blue</h2>
                 <p className="text-sm text-secondary">
-                  Non-subscribers will see ads. Blue users unlock VaraAI, AI filter agent, ad filter, and earning eligibility.
+                  Subscribe to unlock VaraAI, remove ads, and start earning from your content.
                 </p>
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3">
-              {plans.map((plan) => (
-                <div
-                  key={plan.id}
-                  className={`rounded-3xl border p-4 ${plan.featured ? "border-accent bg-accent/10" : "border-border bg-background/50"}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold">{plan.title}</p>
-                        {plan.featured && (
-                          <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                            Popular
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-secondary">{plan.price} VARA / {plan.billingCycle}</p>
-                    </div>
-                    <button
-                      onClick={() => subscribePlan(plan.id)}
-                      className="rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background transition-opacity hover:opacity-90"
-                    >
-                      Subscribe
-                    </button>
+            {/* Single Blue plan card */}
+            <div className="mt-5 rounded-3xl border border-accent bg-accent/10 p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <BadgeCheck className="h-5 w-5 text-accent" />
+                <p className="font-bold text-lg">Blue</p>
+              </div>
+              <p className="text-sm text-secondary mb-4">
+                One plan. Everything included.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {BLUE_PLAN_BENEFITS.map(({ label, icon: Icon }) => (
+                  <div key={label} className="flex items-center gap-2 text-sm">
+                    <Icon className="h-4 w-4 text-accent shrink-0" />
+                    <span>{label}</span>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-secondary">
-                    {plan.benefits.map((benefit) => (
-                      <span key={benefit} className="rounded-full border border-border bg-background/70 px-2.5 py-1">
-                        {benefit}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
+
+              <SubscribeButton onSuccess={handleSubscribeSuccess} />
             </div>
+
+            {pendingOnChain && (
+              <p className="mt-4 text-center text-sm text-secondary">
+                Transaction confirmed! Your subscription is being processed by the server…
+              </p>
+            )}
           </div>
         </div>
       )}

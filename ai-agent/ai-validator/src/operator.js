@@ -101,6 +101,61 @@ export async function sendDecision(userAddress, isApproved, type) {
 }
 
 /**
+ * Call setHashFor on the StorageGatekeeper contract to anchor a user's
+ * 0G Storage root hash on-chain.
+ *
+ * @param {string} userAddress  Wallet address of the user
+ * @param {string} rootHash     0x-prefixed 64-char hex root hash from 0G Storage
+ * @returns {Promise<string>}   Confirmed transaction hash
+ */
+export async function setHashFor(userAddress, rootHash) {
+  const MAX_RETRIES = 3;
+
+  // Normalise to 0x-prefixed 32-byte hex (bytes32)
+  const rootHashBytes32 = rootHash.startsWith("0x") ? rootHash : `0x${rootHash}`;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const contract = getContract();
+
+      const feeData = await _provider.getFeeData();
+      const rawGasPrice = feeData.gasPrice ?? ethers.parseUnits("5", "gwei");
+      const ceiling = ethers.parseUnits("10", "gwei");
+      const gasPrice =
+        ((rawGasPrice * 110n) / 100n) < ceiling
+          ? (rawGasPrice * 110n) / 100n
+          : ceiling;
+
+      const tx = await contract.setHashFor(userAddress, rootHashBytes32, { gasPrice });
+
+      logger.info("setHashFor tx submitted", {
+        user: userAddress,
+        rootHash: rootHashBytes32,
+        hash: tx.hash,
+      });
+
+      const receipt = await tx.wait(1);
+      logger.info("setHashFor confirmed", {
+        hash: receipt.hash,
+        block: receipt.blockNumber,
+      });
+
+      return receipt.hash;
+    } catch (err) {
+      if (attempt === MAX_RETRIES - 1 || !isRetryable(err)) throw err;
+
+      resetSingletons();
+      const delay = 2_000 * 2 ** attempt;
+      logger.warn(
+        `setHashFor failed (attempt ${attempt + 1}/${MAX_RETRIES}), retry in ${delay}ms`,
+        { error: err.message }
+      );
+      await sleep(delay);
+    }
+  }
+}
+
+/**
  * Log a warning if the operator wallet balance drops below 0.05 ETH.
  * Called on startup and can be scheduled periodically.
  */

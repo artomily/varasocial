@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useAccount } from "wagmi";
-import type { Post, User, Comment, Conversation } from "@/lib/types";
+import type { Post, User, Comment, Conversation, MediaItem } from "@/lib/types";
 import {
   MOCK_POSTS,
   MOCK_COMMENTS,
@@ -31,6 +31,7 @@ import {
   deleteLike,
   upsertRepost,
   deleteRepost,
+  insertNotification,
 } from "@/lib/supabase-queries";
 import type { UserAdPreference, UserSubscription } from "@/lib/types";
 
@@ -50,15 +51,15 @@ interface AppState {
 }
 
 interface AppActions {
-  toggleLike: (postId: string) => void;
-  toggleRepost: (postId: string) => void;
+  toggleLike: (postId: string, postAuthorId?: string) => void;
+  toggleRepost: (postId: string, postAuthorId?: string) => void;
   toggleFollow: (userId: string) => void;
   toggleVaraAI: () => void;
   toggleSidebar: () => void;
-  addComment: (postId: string, content: string) => void;
-  addPost: (content: string) => void;
+  addComment: (postId: string, content: string, postAuthorId?: string) => void;
+  addPost: (content: string, options?: { mediaItems?: MediaItem[]; routeHash?: string }) => void;
   completeUsername: (handle: string) => Promise<void>;
-  subscribePlan: (planId: string) => Promise<void>;
+  subscribePlan: (planId: string, txHash?: string) => Promise<void>;
   saveAdPreference: (
     preference: Partial<Omit<UserAdPreference, "userId">>,
   ) => Promise<void>;
@@ -153,7 +154,7 @@ function AppProviderCore({
     };
   }, [address, isConnected]);
 
-  const toggleLike = useCallback((postId: string) => {
+  const toggleLike = useCallback((postId: string, postAuthorId?: string) => {
     const isLiked = likedPosts.has(postId);
 
     setLikedPosts((prev) => {
@@ -170,14 +171,19 @@ function AppProviderCore({
       )
     );
 
-    // Persist in background (fire-and-forget)
     if (currentUser) {
-      if (isLiked) deleteLike(postId, currentUser.id);
-      else upsertLike(postId, currentUser.id);
+      if (isLiked) {
+        deleteLike(postId, currentUser.id);
+      } else {
+        upsertLike(postId, currentUser.id);
+        if (postAuthorId && postAuthorId !== currentUser.id) {
+          insertNotification(postAuthorId, currentUser.id, "like", postId);
+        }
+      }
     }
   }, [likedPosts, currentUser]);
 
-  const toggleRepost = useCallback((postId: string) => {
+  const toggleRepost = useCallback((postId: string, postAuthorId?: string) => {
     const isReposted = repostedPosts.has(postId);
 
     setRepostedPosts((prev) => {
@@ -195,8 +201,14 @@ function AppProviderCore({
     );
 
     if (currentUser) {
-      if (isReposted) deleteRepost(postId, currentUser.id);
-      else upsertRepost(postId, currentUser.id);
+      if (isReposted) {
+        deleteRepost(postId, currentUser.id);
+      } else {
+        upsertRepost(postId, currentUser.id);
+        if (postAuthorId && postAuthorId !== currentUser.id) {
+          insertNotification(postAuthorId, currentUser.id, "repost", postId);
+        }
+      }
     }
   }, [repostedPosts, currentUser]);
 
@@ -218,10 +230,9 @@ function AppProviderCore({
   }, []);
 
   const addComment = useCallback(
-    (postId: string, content: string) => {
+    (postId: string, content: string, postAuthorId?: string) => {
       if (!currentUser) return;
 
-      // Optimistic local comment
       const tempId = `temp-${Date.now()}`;
       const tempComment = {
         id: tempId,
@@ -238,12 +249,14 @@ function AppProviderCore({
         )
       );
 
-      // Persist and replace temp with real row
       insertComment(postId, currentUser.id, content).then((saved) => {
         if (saved) {
           setComments((prev) =>
             prev.map((c) => (c.id === tempId ? saved : c))
           );
+          if (postAuthorId && postAuthorId !== currentUser.id) {
+            insertNotification(postAuthorId, currentUser.id, "reply", postId);
+          }
         }
       });
     },
@@ -251,15 +264,16 @@ function AppProviderCore({
   );
 
   const addPost = useCallback(
-    (content: string) => {
+    (content: string, options?: { mediaItems?: MediaItem[]; routeHash?: string }) => {
       if (!currentUser || !currentUser.usernameSetAt) return;
 
-      // Optimistic prepend
       const tempId = `temp-${Date.now()}`;
       const tempPost: Post = {
         id: tempId,
         author: currentUser,
         content,
+        media: options?.mediaItems,
+        routeHash: options?.routeHash,
         timestamp: new Date().toISOString(),
         likes: 0,
         reposts: 0,
@@ -270,8 +284,7 @@ function AppProviderCore({
       };
       setPosts((prev) => [tempPost, ...prev]);
 
-      // Persist and replace temp with real row
-      insertPost(currentUser.id, content).then((saved) => {
+      insertPost(currentUser.id, content, options?.mediaItems ?? [], options?.routeHash).then((saved) => {
         if (saved) {
           setPosts((prev) =>
             prev.map((p) => (p.id === tempId ? saved : p))
@@ -292,9 +305,9 @@ function AppProviderCore({
   );
 
   const subscribePlan = useCallback(
-    async (planId: string) => {
+    async (planId: string, txHash?: string) => {
       if (!currentUser) return;
-      const subscription = await saveUserSubscription(currentUser.id, planId);
+      const subscription = await saveUserSubscription(currentUser.id, planId, txHash);
       if (subscription) {
         setUserSubscription(subscription);
         setCurrentUser((prev) => (prev ? { ...prev, verified: true } : prev));

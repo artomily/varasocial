@@ -34,7 +34,7 @@ export default function MessagesPage() {
             <Link
               key={conv.userId}
               href={`/messages/${conv.userId}`}
-              className="flex items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/50"
+              className="flex items-center gap-3 border-b border-border px-6 py-3 transition-colors hover:bg-surface/50"
             >
               <Avatar name={user.displayName} />
               <div className="min-w-0 flex-1">

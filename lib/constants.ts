@@ -38,7 +38,7 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
 export const MORE_NAV_ITEMS: NavItem[] = [
   { label: "SocialFlow", href: "/socialflow", icon: TrendingUp },
   { label: "AI Filter", href: "/ai-filter", icon: SlidersHorizontal },
-  { label: "Mode Turu", href: "/mode-turu", icon: Bot },
+  { label: "Mode Sleep", href: "/mode-turu", icon: Bot },
   { label: "Monetize", href: "/monetize", icon: DollarSign },
   { label: "Ads Setup", href: "/ads/setup", icon: Megaphone },
   { label: "Settings", href: "/settings", icon: Settings },

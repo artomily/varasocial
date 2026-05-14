@@ -86,6 +86,7 @@ export interface UserSubscription {
   status: string;
   startsAt: string;
   endsAt?: string;
+  ogTxHash?: string;
 }
 
 export interface UserAdPreference {

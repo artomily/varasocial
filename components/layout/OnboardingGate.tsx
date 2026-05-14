@@ -6,12 +6,27 @@ import { useAccount, useConnect } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { useApp } from "@/lib/store";
 
+const LS_KEY = "vara-onboarding-complete";
+
 export function OnboardingGate() {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
   const { currentUser, completeUsername, loading } = useApp();
   const [handle, setHandle] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Once we confirm the user has a username, persist the flag so future
+  // page loads don't flash the modal during the async init window.
+  useEffect(() => {
+    if (currentUser?.usernameSetAt) {
+      localStorage.setItem(LS_KEY, "1");
+    }
+  }, [currentUser?.usernameSetAt]);
 
   useEffect(() => {
     if (currentUser?.handle && !currentUser.usernameSetAt) {
@@ -19,9 +34,19 @@ export function OnboardingGate() {
     }
   }, [currentUser]);
 
+  // Don't render anything on the server (wallet state is client-only).
+  // This eliminates the hydration mismatch entirely.
+  if (!mounted) return null;
+
+  const alreadyOnboarded = localStorage.getItem(LS_KEY) === "1";
+
   const needsConnect = !isConnected || !address;
-  const waitingForProfile = Boolean(address) && isConnected && loading && !currentUser;
-  const needsUsername = Boolean(address) && isConnected && !loading && !!currentUser && !currentUser.usernameSetAt;
+  // Only show the "creating profile…" spinner for users who haven't completed
+  // onboarding yet.  For existing users it would just flash and disappear.
+  const waitingForProfile =
+    !alreadyOnboarded && isConnected && !!address && loading && !currentUser;
+  const needsUsername =
+    isConnected && !!address && !loading && !!currentUser && !currentUser.usernameSetAt;
 
   const handleConnectWallet = () => {
     connect({ connector: injected() });
@@ -35,6 +60,7 @@ export function OnboardingGate() {
     setSubmitting(true);
     try {
       await completeUsername(nextHandle);
+      localStorage.setItem(LS_KEY, "1");
     } finally {
       setSubmitting(false);
     }

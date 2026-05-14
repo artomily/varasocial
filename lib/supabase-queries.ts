@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import type {
   AdCampaign,
   MediaItem,
+  Notification,
   Post,
   PostStorageRoute,
   SubscriptionPlan,
@@ -60,6 +61,18 @@ type UserSubscriptionRow = {
   status: string;
   starts_at: string;
   ends_at: string | null;
+  og_tx_hash: string | null;
+};
+
+type NotificationRow = {
+  id: string;
+  user_id: string;
+  actor_id: string;
+  type: string;
+  post_id: string | null;
+  read: boolean;
+  created_at: string;
+  actor_user: UserRow;
 };
 
 type UserAdPreferenceRow = {
@@ -163,6 +176,18 @@ function mapUserSubscriptionRow(row: UserSubscriptionRow): UserSubscription {
     status: row.status,
     startsAt: row.starts_at,
     endsAt: row.ends_at ?? undefined,
+    ogTxHash: row.og_tx_hash ?? undefined,
+  };
+}
+
+function mapNotificationRow(row: NotificationRow): Notification {
+  return {
+    id: row.id,
+    type: row.type as Notification["type"],
+    actor: mapUserRow(row.actor_user),
+    postId: row.post_id ?? undefined,
+    timestamp: row.created_at,
+    read: row.read,
   };
 }
 
@@ -399,7 +424,7 @@ export async function insertPost(
   authorId: string,
   content: string,
   media: MediaItem[] = [],
-  storageRoute?: string,
+  routeHash?: string,
 ): Promise<Post | null> {
   const { data, error } = await supabase
     .from("posts")
@@ -407,6 +432,7 @@ export async function insertPost(
       author_id: authorId,
       content,
       media: media.length > 0 ? media : null,
+      route_hash: routeHash ?? null,
       truth_score: Math.floor(Math.random() * 30) + 70,
       truth_level: "valid",
       virality_score: Math.floor(Math.random() * 40) + 10,
@@ -419,20 +445,13 @@ export async function insertPost(
     return null;
   }
 
-  if (storageRoute) {
-    await supabase.from("post_storage_routes").upsert({
-      post_id: (data as PostRow).id,
-      storage_provider: "0g",
-      storage_route: storageRoute,
-    });
-  }
-
   return mapPostRow(data as unknown as PostRow);
 }
 
 export async function saveUserSubscription(
   userId: string,
   planId: string,
+  ogTxHash?: string,
 ): Promise<UserSubscription | null> {
   const { data, error } = await supabase
     .from("user_subscriptions")
@@ -442,6 +461,7 @@ export async function saveUserSubscription(
       status: "active",
       starts_at: new Date().toISOString(),
       ends_at: null,
+      og_tx_hash: ogTxHash ?? null,
     })
     .select("*")
     .single();
@@ -483,6 +503,7 @@ export async function createAdCampaign(
   objective: string,
   budget: number,
   placements: string[],
+  routeHash?: string,
 ): Promise<AdCampaign | null> {
   const { data, error } = await supabase
     .from("ad_campaigns")
@@ -493,6 +514,7 @@ export async function createAdCampaign(
       budget,
       placements,
       status: "draft",
+      route_hash: routeHash ?? null,
     })
     .select("*")
     .single();
@@ -521,6 +543,65 @@ export async function insertComment(
     return null;
   }
   return mapCommentRow(data as unknown as CommentRow);
+}
+
+export async function fetchNotifications(
+  userId: string,
+): Promise<Notification[]> {
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*, actor_user:users!actor_id(*)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error || !data) {
+    console.error("fetchNotifications:", error?.message);
+    return [];
+  }
+  return (data as unknown as NotificationRow[]).map(mapNotificationRow);
+}
+
+export async function insertNotification(
+  userId: string,
+  actorId: string,
+  type: "like" | "repost" | "reply" | "follow" | "reward",
+  postId?: string,
+): Promise<void> {
+  if (userId === actorId) return;
+  await supabase.from("notifications").insert({
+    user_id: userId,
+    actor_id: actorId,
+    type,
+    post_id: postId ?? null,
+  });
+}
+
+export async function fetchRandomUsers(
+  excludeId?: string,
+  limit = 5,
+): Promise<User[]> {
+  let query = supabase
+    .from("users")
+    .select("*")
+    .limit(limit * 3);
+  if (excludeId) {
+    query = query.neq("id", excludeId);
+  }
+  const { data, error } = await query;
+  if (error || !data) return [];
+  const shuffled = (data as UserRow[]).sort(() => Math.random() - 0.5).slice(0, limit);
+  return shuffled.map(mapUserRow);
+}
+
+export async function upsertAdCampaignRouteHash(
+  campaignId: string,
+  routeHash: string,
+): Promise<void> {
+  await supabase
+    .from("ad_campaigns")
+    .update({ route_hash: routeHash })
+    .eq("id", campaignId);
 }
 
 export async function upsertLike(

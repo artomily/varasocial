@@ -10,4 +10,8 @@ export const ABI = [
   // ── Operator write functions ─────────────────────────────────
   "function processAdValidation(address user, bool approved) external",
   "function processValidation(address user, bool approved) external",
+  "function setHashFor(address user, bytes32 rootHash) external",
+
+  // ── Read functions (used by scheduler) ──────────────────────
+  "function isSelfManaged(address user) external view returns (bool)",
 ];

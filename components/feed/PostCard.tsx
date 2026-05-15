@@ -138,7 +138,7 @@ export function PostCard({ post }: { post: Post }) {
           </Link>
 
           <button
-            onClick={() => toggleRepost(post.id)}
+            onClick={() => toggleRepost(post.id, post.author.id)}
             className={`group flex items-center gap-1.5 rounded-full p-2 transition-colors ${
               isReposted ? "text-truth-valid" : "text-secondary hover:text-truth-valid"
             }`}
@@ -148,7 +148,7 @@ export function PostCard({ post }: { post: Post }) {
           </button>
 
           <button
-            onClick={() => toggleLike(post.id)}
+            onClick={() => toggleLike(post.id, post.author.id)}
             className={`group flex items-center gap-1.5 rounded-full p-2 transition-colors ${
               isLiked ? "text-truth-hoax" : "text-secondary hover:text-truth-hoax"
             }`}

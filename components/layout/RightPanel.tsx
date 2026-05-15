@@ -1,6 +1,12 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { MOCK_TRENDS, SUGGESTED_FOLLOWS } from "@/lib/mock-data";
 import { Avatar } from "@/components/common/Avatar";
+import { useApp } from "@/lib/store";
+import { fetchRandomUsers } from "@/lib/supabase-queries";
+import type { User } from "@/lib/types";
 
 function formatCount(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
@@ -8,6 +14,15 @@ function formatCount(n: number): string {
 }
 
 export function RightPanel() {
+  const { currentUser } = useApp();
+  const [suggestedUsers, setSuggestedUsers] = useState<User[]>(SUGGESTED_FOLLOWS);
+
+  useEffect(() => {
+    fetchRandomUsers(currentUser?.id, 5).then((users) => {
+      if (users.length > 0) setSuggestedUsers(users);
+    });
+  }, [currentUser?.id]);
+
   return (
     <aside className="sticky top-0 hidden h-screen w-87.5 shrink-0 flex-col gap-4 overflow-y-auto py-3 pl-6 pr-4 lg:flex">
       {/* Search */}
@@ -39,7 +54,7 @@ export function RightPanel() {
             </button>
           ))}
         </div>
-        <button className="w-full px-4 py-3 text-left text-sm text-accent transition-colors hover:bg-surface-hover rounded-b-2xl">
+        <button className="w-full rounded-b-2xl px-4 py-3 text-left text-sm text-accent transition-colors hover:bg-surface-hover">
           Show more
         </button>
       </section>
@@ -48,19 +63,15 @@ export function RightPanel() {
       <section className="rounded-2xl bg-surface">
         <h2 className="px-4 pt-3 pb-1 text-xl font-bold">Who to follow</h2>
         <div className="flex flex-col">
-          {SUGGESTED_FOLLOWS.map((user) => (
+          {suggestedUsers.map((user) => (
             <div
               key={user.id}
               className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-hover"
             >
               <Avatar name={user.displayName} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold">
-                  {user.displayName}
-                </p>
-                <p className="truncate text-sm text-secondary">
-                  @{user.handle}
-                </p>
+                <p className="truncate text-sm font-bold">{user.displayName}</p>
+                <p className="truncate text-sm text-secondary">@{user.handle}</p>
               </div>
               <button className="shrink-0 rounded-full bg-foreground px-4 py-1.5 text-sm font-bold text-background transition-opacity hover:opacity-90">
                 Follow
@@ -68,7 +79,7 @@ export function RightPanel() {
             </div>
           ))}
         </div>
-        <button className="w-full px-4 py-3 text-left text-sm text-accent transition-colors hover:bg-surface-hover rounded-b-2xl">
+        <button className="w-full rounded-b-2xl px-4 py-3 text-left text-sm text-accent transition-colors hover:bg-surface-hover">
           Show more
         </button>
       </section>

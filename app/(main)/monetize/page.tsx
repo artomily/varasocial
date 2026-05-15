@@ -1,42 +1,43 @@
 "use client";
 
 import {
-  BadgeCheck,
-  DollarSign,
-  Bot,
-  TrendingUp,
-  CheckCircle2,
-  Zap,
-  Info,
-  Wallet,
-  ShieldCheck,
-  Megaphone,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
-import { useState } from "react";
-import { useApp } from "@/lib/store";
-import {
-  useReadContract,
-  useWriteContract,
+  useSendTransaction,
   useWaitForTransactionReceipt,
-  useChainId,
   useSwitchChain,
+  useChainId,
 } from "wagmi";
-import { zeroGGalileo } from "@/lib/wagmi-config";
-import { parseAbi } from "viem";
+import { parseEther } from "viem";
+import { zeroGTestnet } from "@/lib/wagmi-config";
+import { useEffect, useRef, useState } from "react";
+import {
+  BadgeCheck,
+  Bot,
+  CheckCircle2,
+  DollarSign,
+  ExternalLink,
+  Info,
+  Loader2,
+  Megaphone,
+  ShieldCheck,
+  TrendingUp,
+  Wallet,
+  Zap,
+} from "lucide-react";
+import { useApp } from "@/lib/store";
 
-const CONTRACT_ADDRESS = "0x948F0ea80688E175d85D2B08418190AaB24db38d" as const;
-const CONTRACT_ABI = parseAbi([
-  "function subscriptionPrice() external view returns (uint256)",
-  "function requestSubscription() external payable",
-]);
+const PLAN_BENEFITS = [
+  "Blue check verification",
+  "VaraAI feed scoring",
+  "Mode Sleep AI agent",
+  "Ad-free experience",
+  "Creator earnings eligibility",
+];
 
-const BLUE_PLAN_BENEFITS = [
-  { label: "Blue check badge", icon: BadgeCheck },
-  { label: "VaraAI access", icon: Bot },
-  { label: "No ads", icon: Megaphone },
-  { label: "Creator earnings", icon: DollarSign },
+const AI_CRITERIA = [
+  { label: "Content Originality", description: "AI checks for unique, non-plagiarised content", icon: CheckCircle2 },
+  { label: "Engagement Quality", description: "Measures audience interaction depth, not just raw numbers", icon: TrendingUp },
+  { label: "Truth Score ≥ 70", description: "Only verified or high-truth-score posts qualify for rewards", icon: BadgeCheck },
+  { label: "Community Value", description: "AI evaluates educational and informational merit", icon: Bot },
 ];
 
 const MOCK_PAYOUTS = [
@@ -46,117 +47,41 @@ const MOCK_PAYOUTS = [
   { id: 4, date: "Apr 14, 2026", amount: 38.1, posts: 4, status: "pending" },
 ];
 
-const AI_CRITERIA = [
-  {
-    label: "Content Originality",
-    description: "AI checks for unique, non-plagiarized content",
-    icon: CheckCircle2,
-  },
-  {
-    label: "Engagement Quality",
-    description: "Measures audience interaction depth, not just raw numbers",
-    icon: TrendingUp,
-  },
-  {
-    label: "Truth Score ≥ 70",
-    description: "Only verified or high-truth-score posts qualify for rewards",
-    icon: BadgeCheck,
-  },
-  {
-    label: "Community Value",
-    description: "AI evaluates educational and informational merit",
-    icon: Bot,
-  },
-];
-
-function SubscribeButton({ onSuccess }: { onSuccess: () => void }) {
-  const chainId = useChainId();
-  const { switchChain, isPending: isSwitching } = useSwitchChain();
-  const [txError, setTxError] = useState<string | null>(null);
-
-  const { data: price } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-    functionName: "subscriptionPrice",
-    chainId: zeroGGalileo.id,
-  });
-
-  const { writeContract, data: txHash, isPending: isWriting } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash: txHash,
-    chainId: zeroGGalileo.id,
-  });
-
-  // Call onSuccess once tx is confirmed
-  if (isSuccess) {
-    onSuccess();
-  }
-
-  const onWrongChain = chainId !== zeroGGalileo.id;
-
-  const handleClick = () => {
-    setTxError(null);
-    if (onWrongChain) {
-      switchChain({ chainId: zeroGGalileo.id });
-      return;
-    }
-    if (price === undefined) return;
-    writeContract(
-      {
-        address: CONTRACT_ADDRESS,
-        abi: CONTRACT_ABI,
-        functionName: "requestSubscription",
-        value: price,
-        chainId: zeroGGalileo.id,
-      },
-      {
-        onError: (err) => setTxError(err.message.split("\n")[0]),
-      }
-    );
-  };
-
-  const busy = isSwitching || isWriting || isConfirming;
-  const label = onWrongChain
-    ? "Switch to 0G Network"
-    : isWriting
-    ? "Confirm in wallet…"
-    : isConfirming
-    ? "Confirming…"
-    : price !== undefined
-    ? `Subscribe · ${Number(price) / 1e18} OG`
-    : "Loading price…";
-
-  return (
-    <div className="mt-5 space-y-2">
-      <button
-        onClick={handleClick}
-        disabled={busy || price === undefined}
-        className="w-full rounded-full bg-foreground px-4 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-      >
-        {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-        {label}
-      </button>
-      {txError && (
-        <div className="flex items-start gap-2 rounded-xl bg-truth-hoax/10 p-3 text-xs text-truth-hoax">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>{txError}</span>
-        </div>
-      )}
-      {txHash && isConfirming && (
-        <p className="text-center text-xs text-secondary break-all">
-          Tx: {txHash}
-        </p>
-      )}
-    </div>
-  );
-}
-
 export default function MonetizePage() {
   const { currentUser, userSubscription, subscribePlan, saveAdPreference } = useApp();
-  const [pendingOnChain, setPendingOnChain] = useState(false);
+  const chainId = useChainId();
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
+  const { sendTransaction, data: txHash, isPending: isTxPending, error: txError } = useSendTransaction();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
-  const isVerified = Boolean(currentUser?.verified || userSubscription);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const subscribeCalledRef = useRef(false);
+
+  useEffect(() => {
+    if (isSuccess && txHash && !subscribeCalledRef.current) {
+      subscribeCalledRef.current = true;
+      setShowSuccess(true);
+      subscribePlan("blue", txHash);
+    }
+  }, [isSuccess, txHash, subscribePlan]);
+
+  const isSubscribed = Boolean(userSubscription);
+  const isWrongChain = chainId !== zeroGTestnet.id;
+  const isLoading = isTxPending || isConfirming || isSwitching;
+
+  const handlePay = () => {
+    if (!currentUser) return;
+    if (isWrongChain) {
+      switchChain({ chainId: zeroGTestnet.id });
+      return;
+    }
+    const treasury = process.env.NEXT_PUBLIC_TREASURY_ADDRESS;
+    if (!treasury) {
+      console.error("NEXT_PUBLIC_TREASURY_ADDRESS env var not set");
+      return;
+    }
+    sendTransaction({ to: treasury as `0x${string}`, value: parseEther("0.05") });
+  };
 
   // Called after on-chain tx confirmed — sync to Supabase
   const handleSubscribeSuccess = () => {
@@ -167,61 +92,109 @@ export default function MonetizePage() {
   };
 
   return (
-    <div>
+    <div className="relative">
+      {/* Success modal */}
+      {showSuccess && txHash && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl bg-background p-8 text-center shadow-2xl ring-1 ring-border">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-truth-valid/20">
+              <CheckCircle2 className="h-8 w-8 text-truth-valid" />
+            </div>
+            <h2 className="mb-2 text-2xl font-bold">Payment Successful!</h2>
+            <p className="mb-5 text-sm text-secondary">
+              You&apos;re now a VaraSocial Blue member. VaraAI and Mode Sleep are unlocked.
+            </p>
+            <p className="mb-5 break-all rounded-xl bg-surface px-3 py-2 font-mono text-xs text-secondary">
+              {txHash}
+            </p>
+            <a
+              href={`https://chainscan-galileo.0g.ai/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-3 flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-surface-hover"
+            >
+              <ExternalLink className="h-4 w-4" />
+              View on Explorer
+            </a>
+            <button
+              onClick={() => setShowSuccess(false)}
+              className="w-full rounded-full bg-accent py-3 font-bold text-white transition-colors hover:bg-accent-hover"
+            >
+              Start Exploring
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md">
         <h1 className="text-xl font-bold">Monetize</h1>
         <p className="text-sm text-secondary">Earn $VARA from your content</p>
       </div>
 
-      {/* Locked state — shown to unverified users */}
-      {!isVerified && (
+      {/* Not subscribed — payment card */}
+      {!isSubscribed && (
         <div className="border-b border-border px-4 py-6">
-          <div className="rounded-[28px] border border-border bg-surface/80 p-5">
-            <div className="flex items-center gap-3">
+          <div className="rounded-[28px] border border-accent/30 bg-accent/5 p-6">
+            <div className="mb-5 flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/15 text-accent">
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Get Blue</h2>
-                <p className="text-sm text-secondary">
-                  Subscribe to unlock VaraAI, remove ads, and start earning from your content.
-                </p>
+                <h2 className="text-xl font-bold">VaraSocial Blue</h2>
+                <p className="text-sm text-secondary">One-time payment on 0G testnet</p>
               </div>
             </div>
 
-            {/* Single Blue plan card */}
-            <div className="mt-5 rounded-3xl border border-accent bg-accent/10 p-5">
-              <div className="flex items-center gap-2 mb-1">
-                <BadgeCheck className="h-5 w-5 text-accent" />
-                <p className="font-bold text-lg">Blue</p>
-              </div>
-              <p className="text-sm text-secondary mb-4">
-                One plan. Everything included.
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {BLUE_PLAN_BENEFITS.map(({ label, icon: Icon }) => (
-                  <div key={label} className="flex items-center gap-2 text-sm">
-                    <Icon className="h-4 w-4 text-accent shrink-0" />
-                    <span>{label}</span>
-                  </div>
-                ))}
-              </div>
-
-              <SubscribeButton onSuccess={handleSubscribeSuccess} />
+            <div className="mb-5 flex items-baseline gap-2">
+              <span className="text-4xl font-bold">0.05</span>
+              <span className="text-xl font-semibold text-accent">0G</span>
             </div>
 
-            {pendingOnChain && (
-              <p className="mt-4 text-center text-sm text-secondary">
-                Transaction confirmed! Your subscription is being processed by the server…
+            <ul className="mb-6 space-y-2">
+              {PLAN_BENEFITS.map((b) => (
+                <li key={b} className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-truth-valid" />
+                  {b}
+                </li>
+              ))}
+            </ul>
+
+            {txError && (
+              <p className="mb-3 rounded-xl bg-truth-hoax/10 px-3 py-2 text-xs text-truth-hoax">
+                {txError.message.slice(0, 120)}
               </p>
+            )}
+
+            <button
+              onClick={handlePay}
+              disabled={isLoading || !currentUser}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-accent py-3 font-bold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {isSwitching ? "Switching network…" : isConfirming ? "Confirming…" : "Waiting for wallet…"}
+                </>
+              ) : isWrongChain ? (
+                "Switch to 0G Testnet"
+              ) : (
+                <>
+                  <Wallet className="h-4 w-4" />
+                  Pay 0.05 0G
+                </>
+              )}
+            </button>
+
+            {!currentUser && (
+              <p className="mt-2 text-center text-xs text-secondary">Connect your wallet first</p>
             )}
           </div>
         </div>
       )}
 
-      {/* Monetize settings — shown to verified users */}
-      {isVerified && (
+      {/* Subscribed state */}
+      {isSubscribed && (
         <div className="divide-y divide-border">
           {/* Status card */}
           <div className="p-4">
@@ -232,15 +205,24 @@ export default function MonetizePage() {
                 </div>
                 <div>
                   <p className="font-bold">Monetization Active</p>
-                  <p className="text-sm text-secondary">
-                    VaraAI is evaluating your posts
-                  </p>
+                  <p className="text-sm text-secondary">VaraAI is evaluating your posts</p>
                 </div>
               </div>
               <div className="h-6 w-11 rounded-full bg-accent p-0.5">
                 <div className="h-5 w-5 translate-x-5 rounded-full bg-white transition-transform" />
               </div>
             </div>
+            {userSubscription?.ogTxHash && (
+              <a
+                href={`https://chainscan-galileo.0g.ai/tx/${userSubscription.ogTxHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 flex items-center gap-1.5 text-xs text-secondary hover:text-accent"
+              >
+                <ExternalLink className="h-3 w-3" />
+                View payment on 0G Explorer
+              </a>
+            )}
           </div>
 
           {/* Pending payout */}
@@ -251,9 +233,7 @@ export default function MonetizePage() {
                 <Zap className="h-5 w-5 text-vara-reward" />
                 <div>
                   <p className="text-sm text-secondary">Pending payout</p>
-                  <p className="text-xl font-bold text-vara-reward">
-                    38.1 $VARA
-                  </p>
+                  <p className="text-xl font-bold text-vara-reward">38.1 $VARA</p>
                 </div>
               </div>
               <div className="text-right">
@@ -263,24 +243,17 @@ export default function MonetizePage() {
             </div>
           </div>
 
-          {/* Connected wallet */}
+          {/* Payout wallet */}
           <div className="p-4">
             <h2 className="mb-3 font-bold">Payout Wallet</h2>
             <div className="flex items-center gap-3 rounded-xl bg-surface p-4">
               <Wallet className="h-5 w-5 text-secondary" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-secondary">Connected wallet</p>
-                <p className="truncate font-mono text-sm">
-                  {currentUser?.walletAddress ?? "Connect wallet first"}
-                </p>
+                <p className="truncate font-mono text-sm">{currentUser?.walletAddress ?? "Connect wallet first"}</p>
               </div>
-              <button className="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs transition-colors hover:bg-surface-hover">
-                Change
-              </button>
             </div>
-            <p className="mt-2 text-xs text-secondary">
-              Minimum payout threshold: 10 $VARA
-            </p>
+            <p className="mt-2 text-xs text-secondary">Minimum payout threshold: 10 $VARA</p>
           </div>
 
           {/* AI evaluation criteria */}
@@ -293,10 +266,7 @@ export default function MonetizePage() {
               {AI_CRITERIA.map((c) => {
                 const Icon = c.icon;
                 return (
-                  <div
-                    key={c.label}
-                    className="flex items-start gap-3 rounded-xl bg-surface p-4"
-                  >
+                  <div key={c.label} className="flex items-start gap-3 rounded-xl bg-surface p-4">
                     <Icon className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
                     <div>
                       <p className="text-sm font-bold">{c.label}</p>
@@ -306,25 +276,18 @@ export default function MonetizePage() {
                 );
               })}
             </div>
-            <p className="mt-3 text-xs text-secondary">
-              VaraAI automatically scores every post. No manual applications —
-              qualifying posts receive $VARA at each monthly cycle.
-            </p>
-
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 onClick={() => saveAdPreference({ hideAds: true, filterAiAds: true })}
                 className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs font-semibold transition-colors hover:bg-surface-hover"
               >
-                <Megaphone className="h-4 w-4" />
-                Hide ads
+                <Megaphone className="h-4 w-4" /> Hide ads
               </button>
               <button
                 onClick={() => saveAdPreference({ hideAds: false, filterAiAds: true })}
                 className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs font-semibold transition-colors hover:bg-surface-hover"
               >
-                <Bot className="h-4 w-4" />
-                AI filter ads
+                <Bot className="h-4 w-4" /> AI filter ads
               </button>
             </div>
           </div>
@@ -336,43 +299,20 @@ export default function MonetizePage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-left text-secondary font-normal">
-                      Date
-                    </th>
-                    <th className="px-4 py-3 text-left text-secondary font-normal">
-                      Posts
-                    </th>
-                    <th className="px-4 py-3 text-right text-secondary font-normal">
-                      Amount
-                    </th>
-                    <th className="px-4 py-3 text-right text-secondary font-normal">
-                      Status
-                    </th>
+                    <th className="px-4 py-3 text-left font-normal text-secondary">Date</th>
+                    <th className="px-4 py-3 text-left font-normal text-secondary">Posts</th>
+                    <th className="px-4 py-3 text-right font-normal text-secondary">Amount</th>
+                    <th className="px-4 py-3 text-right font-normal text-secondary">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {MOCK_PAYOUTS.map((p, i) => (
-                    <tr
-                      key={p.id}
-                      className={
-                        i < MOCK_PAYOUTS.length - 1
-                          ? "border-b border-border"
-                          : ""
-                      }
-                    >
+                    <tr key={p.id} className={i < MOCK_PAYOUTS.length - 1 ? "border-b border-border" : ""}>
                       <td className="px-4 py-3">{p.date}</td>
                       <td className="px-4 py-3 text-secondary">{p.posts}</td>
-                      <td className="px-4 py-3 text-right font-bold text-vara-reward">
-                        {p.amount} $VARA
-                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-vara-reward">{p.amount} $VARA</td>
                       <td className="px-4 py-3 text-right">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                            p.status === "paid"
-                              ? "bg-truth-valid/20 text-truth-valid"
-                              : "bg-truth-suspicious/20 text-truth-suspicious"
-                          }`}
-                        >
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${p.status === "paid" ? "bg-truth-valid/20 text-truth-valid" : "bg-truth-suspicious/20 text-truth-suspicious"}`}>
                           {p.status === "paid" ? "Paid" : "Pending"}
                         </span>
                       </td>

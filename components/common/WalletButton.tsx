@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Wallet, LogOut } from "lucide-react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected } from "wagmi/connectors";
@@ -8,6 +9,11 @@ export function WalletButton({ collapsed = false }: { collapsed?: boolean }) {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleConnect = () => {
     connect({ connector: injected() });
@@ -18,6 +24,19 @@ export function WalletButton({ collapsed = false }: { collapsed?: boolean }) {
   };
 
   const shortAddr = isConnected && address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null;
+
+  // Return a stable placeholder until the client has mounted so SSR and the
+  // first client render always produce identical HTML (no hydration mismatch).
+  if (!mounted) {
+    return (
+      <button
+        disabled
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-bold text-white opacity-50"
+      >
+        {collapsed ? <Wallet className="h-5 w-5" /> : <span>Connect Wallet</span>}
+      </button>
+    );
+  }
 
   if (collapsed) {
     return (

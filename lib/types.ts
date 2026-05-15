@@ -8,8 +8,6 @@ export interface User {
   verified: boolean;
   walletAddress: string;
   bio?: string;
-  followers: number;
-  following: number;
   walletConnectedAt?: string;
   usernameSetAt?: string;
 }
@@ -30,6 +28,7 @@ export interface Post {
   viralityScore: number;
   varaReward?: number;
   parentId?: string;
+  routeHash?: string;
 }
 
 export interface Comment {
@@ -87,6 +86,7 @@ export interface UserSubscription {
   status: string;
   startsAt: string;
   endsAt?: string;
+  ogTxHash?: string;
 }
 
 export interface UserAdPreference {
@@ -104,6 +104,7 @@ export interface AdCampaign {
   budget: number;
   placements: string[];
   status: string;
+  routeHash?: string;
 }
 
 export interface PostStorageRoute {

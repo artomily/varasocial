@@ -1,7 +1,6 @@
 "use client";
 
-import { Megaphone, X } from "lucide-react";
-import { useState } from "react";
+import { Megaphone } from "lucide-react";
 
 interface AdSlotCardProps {
   placement?: "feed" | "explore" | "profile";
@@ -40,23 +39,12 @@ const AD_EXAMPLES = [
 let adIndex = 0;
 
 export function AdSlotCard({ placement = "feed" }: AdSlotCardProps) {
-  const [dismissed, setDismissed] = useState(false);
   const ad = AD_EXAMPLES[adIndex % AD_EXAMPLES.length];
   // Cycle ads per render mount so different slots show different ads
   adIndex++;
 
-  if (dismissed) return null;
-
   return (
     <div className="relative border-b border-border px-4 py-3 bg-surface/30">
-      {/* Dismiss */}
-      <button
-        onClick={() => setDismissed(true)}
-        className="absolute right-3 top-3 rounded-full p-1 text-secondary hover:bg-surface-hover hover:text-foreground"
-        aria-label="Dismiss ad"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
 
       {/* Sponsored label */}
       <div className="mb-2 flex items-center gap-1.5 text-[11px] text-secondary">

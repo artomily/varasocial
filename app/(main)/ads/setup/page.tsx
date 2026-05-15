@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Megaphone, Target, Coins, Sparkles, CircleDollarSign } from "lucide-react";
+import { Megaphone, Target, Coins, Sparkles, CircleDollarSign, Upload, ExternalLink, Loader2 } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { createAdCampaign } from "@/lib/supabase-queries";
 
@@ -14,6 +14,32 @@ export default function AdsSetupPage() {
   const [budget, setBudget] = useState(100);
   const [placements, setPlacements] = useState<string[]>(["feed"]);
   const [status, setStatus] = useState<string | null>(null);
+  const [creativeFile, setCreativeFile] = useState<File | null>(null);
+  const [creativePreview, setCreativePreview] = useState<string | null>(null);
+  const [uploadingCreative, setUploadingCreative] = useState(false);
+  const [creativeRouteHash, setCreativeRouteHash] = useState<string | null>(null);
+
+  const handleCreativeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCreativeFile(file);
+    setCreativePreview(URL.createObjectURL(file));
+    setCreativeRouteHash(null);
+    setUploadingCreative(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/storage/upload", { method: "POST", body: formData });
+      if (res.ok) {
+        const json = await res.json();
+        setCreativeRouteHash(json.rootHash ?? null);
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setUploadingCreative(false);
+    }
+  };
 
   const togglePlacement = (placement: string) => {
     setPlacements((prev) =>
@@ -31,6 +57,7 @@ export default function AdsSetupPage() {
       objective,
       budget,
       placements,
+      creativeRouteHash ?? undefined,
     );
     setStatus(campaign ? "Campaign saved" : "Failed to save campaign");
   };
@@ -55,6 +82,41 @@ export default function AdsSetupPage() {
           </div>
 
           <div className="mt-5 grid gap-4">
+            {/* Ad Creative Upload */}
+            <div className="grid gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-secondary">Ad Creative</span>
+              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-background px-4 py-6 transition-colors hover:bg-surface">
+                {creativePreview ? (
+                  <div className="relative w-full">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={creativePreview} alt="Creative" className="max-h-40 w-full rounded-xl object-cover" />
+                    {uploadingCreative && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40">
+                        <Loader2 className="h-6 w-6 animate-spin text-white" />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="h-8 w-8 text-secondary" />
+                    <span className="text-sm text-secondary">Click to upload — stored on 0G</span>
+                  </>
+                )}
+                <input type="file" accept="image/*,video/*" className="hidden" onChange={handleCreativeChange} />
+              </label>
+              {creativeRouteHash && (
+                <a
+                  href={`https://storagescan-galileo.0g.ai/tx/${creativeRouteHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs text-accent hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  {creativeFile?.name} saved on 0G
+                </a>
+              )}
+            </div>
+
             <label className="grid gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-secondary">Campaign name</span>
               <input

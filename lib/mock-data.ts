@@ -9,8 +9,6 @@ export const MOCK_USERS: User[] = [
     verified: true,
     walletAddress: "0x1a2b...3c4d",
     bio: "Building the decentralized future. Web4 maximalist.",
-    followers: 12400,
-    following: 340,
   },
   {
     id: "u2",
@@ -20,8 +18,6 @@ export const MOCK_USERS: User[] = [
     verified: true,
     walletAddress: "0x5e6f...7g8h",
     bio: "DeAI researcher @ 0G Labs. Content authenticity advocate.",
-    followers: 8900,
-    following: 512,
   },
   {
     id: "u3",
@@ -31,8 +27,6 @@ export const MOCK_USERS: User[] = [
     verified: false,
     walletAddress: "0x9i0j...1k2l",
     bio: "Open source contributor. Building on VaraSocial.",
-    followers: 3200,
-    following: 890,
   },
   {
     id: "u4",
@@ -42,8 +36,6 @@ export const MOCK_USERS: User[] = [
     verified: true,
     walletAddress: "0x3m4n...5o6p",
     bio: "Journalist. Fact-checker. Proven Truth early adopter.",
-    followers: 21000,
-    following: 180,
   },
   {
     id: "u5",
@@ -53,8 +45,6 @@ export const MOCK_USERS: User[] = [
     verified: false,
     walletAddress: "0x7q8r...9s0t",
     bio: "SocialFi creator. Earning $VARA daily.",
-    followers: 5600,
-    following: 720,
   },
   {
     id: "u6",
@@ -64,8 +54,6 @@ export const MOCK_USERS: User[] = [
     verified: true,
     walletAddress: "0xab12...cd34",
     bio: "Web3 product designer. Data portability advocate.",
-    followers: 15300,
-    following: 290,
   },
 ];
 
@@ -338,8 +326,6 @@ export const VARA_AI_USER: User = {
   verified: true,
   walletAddress: "0G-Compute",
   bio: "Decentralized AI analysis powered by 0G Compute.",
-  followers: 0,
-  following: 0,
 };
 
 function generateAIComment(post: Post): Comment {

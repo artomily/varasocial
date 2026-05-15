@@ -65,7 +65,7 @@ export default function DMChatPage({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="flex-1 overflow-y-auto px-6 py-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Avatar name={user.displayName} size="lg" />
@@ -109,7 +109,7 @@ export default function DMChatPage({
       </div>
 
       {/* Input */}
-      <div className="border-t border-border px-4 py-3">
+      <div className="border-t border-border px-6 py-3">
         <div className="flex items-center gap-3">
           <input
             type="text"

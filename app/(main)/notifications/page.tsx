@@ -1,8 +1,13 @@
-import { Heart, Repeat2, MessageCircle, UserPlus, Coins } from "lucide-react";
-import { MOCK_USERS } from "@/lib/mock-data";
-import { Avatar } from "@/components/common/Avatar";
+"use client";
 
-const iconMap = {
+import { useState, useEffect } from "react";
+import { Heart, Repeat2, MessageCircle, UserPlus, Coins, Bell } from "lucide-react";
+import { Avatar } from "@/components/common/Avatar";
+import { useApp } from "@/lib/store";
+import { fetchNotifications } from "@/lib/supabase-queries";
+import type { Notification } from "@/lib/types";
+
+const iconMap: Record<Notification["type"], React.ElementType> = {
   like: Heart,
   repost: Repeat2,
   reply: MessageCircle,
@@ -10,7 +15,7 @@ const iconMap = {
   reward: Coins,
 };
 
-const colorMap = {
+const colorMap: Record<Notification["type"], string> = {
   like: "text-truth-hoax",
   repost: "text-truth-valid",
   reply: "text-accent",
@@ -18,46 +23,86 @@ const colorMap = {
   reward: "text-vara-reward",
 };
 
-const mockNotifications = [
-  { id: "n1", type: "like" as const, user: MOCK_USERS[1], text: "liked your post about Mode Turu", time: "2m" },
-  { id: "n2", type: "repost" as const, user: MOCK_USERS[3], text: "reposted your truth score analysis", time: "15m" },
-  { id: "n3", type: "reward" as const, user: MOCK_USERS[4], text: "You earned 12.5 $VARA from viral content", time: "1h" },
-  { id: "n4", type: "follow" as const, user: MOCK_USERS[5], text: "followed you", time: "2h" },
-  { id: "n5", type: "reply" as const, user: MOCK_USERS[2], text: "replied to your post about data portability", time: "3h" },
-  { id: "n6", type: "like" as const, user: MOCK_USERS[4], text: "liked your post", time: "5h" },
-  { id: "n7", type: "reward" as const, user: MOCK_USERS[1], text: "You earned 8.3 $VARA from SocialFlow", time: "6h" },
-];
+const labelMap: Record<Notification["type"], string> = {
+  like: "liked your post",
+  repost: "reposted your post",
+  reply: "replied to your post",
+  follow: "followed you",
+  reward: "You earned $VARA from your content",
+};
+
+function timeAgo(ts: string): string {
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
+}
 
 export default function NotificationsPage() {
+  const { currentUser } = useApp();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+    fetchNotifications(currentUser.id)
+      .then(setNotifications)
+      .finally(() => setLoading(false));
+  }, [currentUser]);
+
   return (
-    <div>
+    <div className="flex min-h-screen flex-col">
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md">
         <h1 className="text-xl font-bold">Notifications</h1>
       </div>
 
-      <div>
-        {mockNotifications.map((n) => {
-          const Icon = iconMap[n.type];
-          return (
-            <div
-              key={n.id}
-              className="flex items-start gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/50"
-            >
-              <Icon className={`mt-1 h-5 w-5 shrink-0 ${colorMap[n.type]}`} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <Avatar name={n.user.displayName} size="sm" />
-                  <span className="text-sm">
-                    <span className="font-bold">{n.user.displayName}</span>{" "}
-                    <span className="text-secondary">{n.text}</span>
-                  </span>
+      {loading && (
+        <div className="flex flex-1 items-center justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-accent" />
+        </div>
+      )}
+
+      {!loading && notifications.length === 0 && (
+        <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
+          <Bell className="mb-3 h-12 w-12 text-secondary" />
+          <p className="text-xl font-bold">No notifications yet</p>
+          <p className="text-secondary">
+            When someone likes or reposts your content, you&apos;ll see it here.
+          </p>
+        </div>
+      )}
+
+      {!loading && notifications.length > 0 && (
+        <div className="flex-1">
+          {notifications.map((n) => {
+            const Icon = iconMap[n.type];
+            return (
+              <div
+                key={n.id}
+                className={`flex items-start gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/50 ${!n.read ? "bg-accent/5" : ""}`}
+              >
+                <Icon className={`mt-1 h-5 w-5 shrink-0 ${colorMap[n.type]}`} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start gap-2">
+                    <Avatar name={n.actor.displayName} size="sm" />
+                    <span className="text-sm">
+                      <span className="font-bold">{n.actor.displayName}</span>{" "}
+                      <span className="text-secondary">{labelMap[n.type]}</span>
+                    </span>
+                  </div>
                 </div>
+                <span className="shrink-0 text-xs text-secondary">{timeAgo(n.timestamp)}</span>
               </div>
-              <span className="shrink-0 text-xs text-secondary">{n.time}</span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

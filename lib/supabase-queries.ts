@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import type {
   AdCampaign,
   MediaItem,
+  Notification,
   Post,
   PostStorageRoute,
   SubscriptionPlan,
@@ -22,8 +23,6 @@ type UserRow = {
   verified: boolean;
   wallet_address: string;
   bio: string | null;
-  followers: number;
-  following: number;
   wallet_connected_at: string | null;
   username_set_at: string | null;
 };
@@ -41,6 +40,7 @@ type PostRow = {
   likes_count: number;
   reposts_count: number;
   replies_count: number;
+  route_hash: string | null;
   users: UserRow;
 };
 
@@ -61,6 +61,18 @@ type UserSubscriptionRow = {
   status: string;
   starts_at: string;
   ends_at: string | null;
+  og_tx_hash: string | null;
+};
+
+type NotificationRow = {
+  id: string;
+  user_id: string;
+  actor_id: string;
+  type: string;
+  post_id: string | null;
+  read: boolean;
+  created_at: string;
+  actor_user: UserRow;
 };
 
 type UserAdPreferenceRow = {
@@ -78,6 +90,7 @@ type AdCampaignRow = {
   budget: string;
   placements: string[];
   status: string;
+  route_hash: string | null;
 };
 
 type PostStorageRouteRow = {
@@ -108,8 +121,6 @@ export function mapUserRow(row: UserRow): User {
     verified: row.verified,
     walletAddress: row.wallet_address,
     bio: row.bio ?? undefined,
-    followers: row.followers,
-    following: row.following,
     walletConnectedAt: row.wallet_connected_at ?? undefined,
     usernameSetAt: row.username_set_at ?? undefined,
   };
@@ -129,6 +140,7 @@ function mapPostRow(row: PostRow): Post {
     truthLevel: row.truth_level as TruthLevel,
     viralityScore: row.virality_score,
     varaReward: row.vara_reward ?? undefined,
+    routeHash: row.route_hash ?? undefined,
   };
 }
 
@@ -164,6 +176,18 @@ function mapUserSubscriptionRow(row: UserSubscriptionRow): UserSubscription {
     status: row.status,
     startsAt: row.starts_at,
     endsAt: row.ends_at ?? undefined,
+    ogTxHash: row.og_tx_hash ?? undefined,
+  };
+}
+
+function mapNotificationRow(row: NotificationRow): Notification {
+  return {
+    id: row.id,
+    type: row.type as Notification["type"],
+    actor: mapUserRow(row.actor_user),
+    postId: row.post_id ?? undefined,
+    timestamp: row.created_at,
+    read: row.read,
   };
 }
 
@@ -185,6 +209,7 @@ function mapAdCampaignRow(row: AdCampaignRow): AdCampaign {
     budget: Number(row.budget),
     placements: row.placements ?? [],
     status: row.status,
+    routeHash: row.route_hash ?? undefined,
   };
 }
 
@@ -207,7 +232,7 @@ export async function fetchPosts(): Promise<Post[]> {
     .limit(50);
 
   if (error || !data) {
-    console.error("fetchPosts:", error?.message);
+    console.error("fetchPosts error:", error || "No data returned");
     return [];
   }
   return (data as unknown as PostRow[]).map(mapPostRow);
@@ -221,7 +246,7 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
     .order("created_at", { ascending: true });
 
   if (error || !data) {
-    console.error("fetchComments:", error?.message);
+    console.error("fetchComments error:", error || "No data returned");
     return [];
   }
   return (data as unknown as CommentRow[]).map(mapCommentRow);
@@ -247,19 +272,30 @@ export async function fetchUserByWallet(
     .ilike("wallet_address", walletAddress)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) {
+    console.error("fetchUserByWallet error:", error);
+    return null;
+  }
+  if (!data) return null;
   return mapUserRow(data as UserRow);
 }
 
 export async function ensureUserByWallet(
   walletAddress: string,
 ): Promise<User | null> {
+  console.debug("[ensureUserByWallet] Starting for wallet:", walletAddress);
   const existing = await fetchUserByWallet(walletAddress);
-  if (existing) return existing;
+  if (existing) {
+    console.debug("[ensureUserByWallet] Found existing user:", existing.id);
+    return existing;
+  }
 
-  const suffix = walletAddress.slice(-6).toLowerCase();
+  const normalized = walletAddress.toLowerCase();
+  const suffix = normalized.slice(-6);
   const handle = `user-${suffix}`;
   const displayName = `User ${suffix.toUpperCase()}`;
+
+  console.debug("[ensureUserByWallet] Creating new user with handle:", handle);
 
   const { data, error } = await supabase
     .from("users")
@@ -272,11 +308,35 @@ export async function ensureUserByWallet(
     .select("*")
     .single();
 
-  if (error || !data) {
-    console.error("ensureUserByWallet:", error?.message);
+  if (error) {
+    // Duplicate key — another row already exists for this wallet (different casing).
+    // Fall back to a fresh lookup by handle.
+    if (error.code === "23505") {
+      console.debug("[ensureUserByWallet] Duplicate detected, re-fetching by handle:", handle);
+      const { data: fallback } = await supabase
+        .from("users")
+        .select("*")
+        .eq("handle", handle)
+        .maybeSingle();
+      if (fallback) return mapUserRow(fallback as UserRow);
+    }
+    console.error("[ensureUserByWallet] Error creating user:", {
+      message: error.message,
+      code: error.code,
+      hint: error.hint,
+      details: error.details,
+      handle,
+      wallet: walletAddress,
+    });
     return null;
   }
 
+  if (!data) {
+    console.error("[ensureUserByWallet] No data returned after insert");
+    return null;
+  }
+
+  console.debug("[ensureUserByWallet] Successfully created user:", data.id);
   return mapUserRow(data as UserRow);
 }
 
@@ -286,6 +346,8 @@ export async function updateUsername(
 ): Promise<User | null> {
   const normalizedHandle = handle.trim().toLowerCase();
   const displayName = handle.trim();
+
+  console.debug("[updateUsername] Updating user:", userId, "handle:", normalizedHandle);
 
   const { data, error } = await supabase
     .from("users")
@@ -298,11 +360,24 @@ export async function updateUsername(
     .select("*")
     .single();
 
-  if (error || !data) {
-    console.error("updateUsername:", error?.message);
+  if (error) {
+    console.error("[updateUsername] Error:", {
+      message: error.message,
+      code: error.code,
+      hint: error.hint,
+      details: error.details,
+      userId,
+      handle: normalizedHandle,
+    });
     return null;
   }
 
+  if (!data) {
+    console.error("[updateUsername] No data returned after update", userId);
+    return null;
+  }
+
+  console.debug("[updateUsername] Successfully updated user:", userId);
   return mapUserRow(data as UserRow);
 }
 
@@ -314,7 +389,7 @@ export async function fetchSubscriptionPlans(): Promise<SubscriptionPlan[]> {
     .order("price", { ascending: true });
 
   if (error || !data) {
-    console.error("fetchSubscriptionPlans:", error?.message);
+    console.error("fetchSubscriptionPlans error:", error || "No data returned");
     return [];
   }
 
@@ -357,7 +432,7 @@ export async function fetchAdCampaigns(
     .order("created_at", { ascending: false });
 
   if (error || !data) {
-    console.error("fetchAdCampaigns:", error?.message);
+    console.error("fetchAdCampaigns error:", error || "No data returned");
     return [];
   }
 
@@ -399,7 +474,7 @@ export async function insertPost(
   authorId: string,
   content: string,
   media: MediaItem[] = [],
-  storageRoute?: string,
+  routeHash?: string,
 ): Promise<Post | null> {
   const { data, error } = await supabase
     .from("posts")
@@ -407,6 +482,7 @@ export async function insertPost(
       author_id: authorId,
       content,
       media: media.length > 0 ? media : null,
+      route_hash: routeHash ?? null,
       truth_score: Math.floor(Math.random() * 30) + 70,
       truth_level: "valid",
       virality_score: Math.floor(Math.random() * 40) + 10,
@@ -415,16 +491,8 @@ export async function insertPost(
     .single();
 
   if (error || !data) {
-    console.error("insertPost:", error?.message);
+    console.error("insertPost error:", error || "No data returned");
     return null;
-  }
-
-  if (storageRoute) {
-    await supabase.from("post_storage_routes").upsert({
-      post_id: (data as PostRow).id,
-      storage_provider: "0g",
-      storage_route: storageRoute,
-    });
   }
 
   return mapPostRow(data as unknown as PostRow);
@@ -433,6 +501,7 @@ export async function insertPost(
 export async function saveUserSubscription(
   userId: string,
   planId: string,
+  ogTxHash?: string,
 ): Promise<UserSubscription | null> {
   const { data, error } = await supabase
     .from("user_subscriptions")
@@ -442,12 +511,13 @@ export async function saveUserSubscription(
       status: "active",
       starts_at: new Date().toISOString(),
       ends_at: null,
+      og_tx_hash: ogTxHash ?? null,
     })
     .select("*")
     .single();
 
   if (error || !data) {
-    console.error("saveUserSubscription:", error?.message);
+    console.error("saveUserSubscription error:", error || "No data returned");
     return null;
   }
 
@@ -470,7 +540,7 @@ export async function saveUserAdPreference(
     .single();
 
   if (error || !data) {
-    console.error("saveUserAdPreference:", error?.message);
+    console.error("saveUserAdPreference error:", error || "No data returned");
     return null;
   }
 
@@ -483,6 +553,7 @@ export async function createAdCampaign(
   objective: string,
   budget: number,
   placements: string[],
+  routeHash?: string,
 ): Promise<AdCampaign | null> {
   const { data, error } = await supabase
     .from("ad_campaigns")
@@ -493,12 +564,13 @@ export async function createAdCampaign(
       budget,
       placements,
       status: "draft",
+      route_hash: routeHash ?? null,
     })
     .select("*")
     .single();
 
   if (error || !data) {
-    console.error("createAdCampaign:", error?.message);
+    console.error("createAdCampaign error:", error || "No data returned");
     return null;
   }
 
@@ -517,10 +589,69 @@ export async function insertComment(
     .single();
 
   if (error || !data) {
-    console.error("insertComment:", error?.message);
+    console.error("insertComment error:", error || "No data returned");
     return null;
   }
   return mapCommentRow(data as unknown as CommentRow);
+}
+
+export async function fetchNotifications(
+  userId: string,
+): Promise<Notification[]> {
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*, actor_user:users!actor_id(*)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error || !data) {
+    console.error("fetchNotifications error:", error || "No data returned");
+    return [];
+  }
+  return (data as unknown as NotificationRow[]).map(mapNotificationRow);
+}
+
+export async function insertNotification(
+  userId: string,
+  actorId: string,
+  type: "like" | "repost" | "reply" | "follow" | "reward",
+  postId?: string,
+): Promise<void> {
+  if (userId === actorId) return;
+  await supabase.from("notifications").insert({
+    user_id: userId,
+    actor_id: actorId,
+    type,
+    post_id: postId ?? null,
+  });
+}
+
+export async function fetchRandomUsers(
+  excludeId?: string,
+  limit = 5,
+): Promise<User[]> {
+  let query = supabase
+    .from("users")
+    .select("*")
+    .limit(limit * 3);
+  if (excludeId) {
+    query = query.neq("id", excludeId);
+  }
+  const { data, error } = await query;
+  if (error || !data) return [];
+  const shuffled = (data as UserRow[]).sort(() => Math.random() - 0.5).slice(0, limit);
+  return shuffled.map(mapUserRow);
+}
+
+export async function upsertAdCampaignRouteHash(
+  campaignId: string,
+  routeHash: string,
+): Promise<void> {
+  await supabase
+    .from("ad_campaigns")
+    .update({ route_hash: routeHash })
+    .eq("id", campaignId);
 }
 
 export async function upsertLike(

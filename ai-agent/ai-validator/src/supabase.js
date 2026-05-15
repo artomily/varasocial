@@ -4,7 +4,7 @@ import "dotenv/config";
 import { logger } from "./logger.js";
 
 // Service-role client bypasses RLS — never expose this key client-side.
-const supabase = createClient(
+export const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY,
   { auth: { persistSession: false }, realtime: { transport: ws } }

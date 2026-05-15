@@ -83,6 +83,14 @@ export default function MonetizePage() {
     sendTransaction({ to: treasury as `0x${string}`, value: parseEther("0.05") });
   };
 
+  // Called after on-chain tx confirmed — sync to Supabase
+  const handleSubscribeSuccess = () => {
+    if (!pendingOnChain) {
+      setPendingOnChain(true);
+      subscribePlan("blue");
+    }
+  };
+
   return (
     <div className="relative">
       {/* Success modal */}

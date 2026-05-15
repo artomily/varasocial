@@ -232,7 +232,7 @@ export async function fetchPosts(): Promise<Post[]> {
     .limit(50);
 
   if (error || !data) {
-    console.error("fetchPosts:", error?.message);
+    console.error("fetchPosts error:", error || "No data returned");
     return [];
   }
   return (data as unknown as PostRow[]).map(mapPostRow);
@@ -246,7 +246,7 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
     .order("created_at", { ascending: true });
 
   if (error || !data) {
-    console.error("fetchComments:", error?.message);
+    console.error("fetchComments error:", error || "No data returned");
     return [];
   }
   return (data as unknown as CommentRow[]).map(mapCommentRow);
@@ -272,19 +272,30 @@ export async function fetchUserByWallet(
     .ilike("wallet_address", walletAddress)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) {
+    console.error("fetchUserByWallet error:", error);
+    return null;
+  }
+  if (!data) return null;
   return mapUserRow(data as UserRow);
 }
 
 export async function ensureUserByWallet(
   walletAddress: string,
 ): Promise<User | null> {
+  console.debug("[ensureUserByWallet] Starting for wallet:", walletAddress);
   const existing = await fetchUserByWallet(walletAddress);
-  if (existing) return existing;
+  if (existing) {
+    console.debug("[ensureUserByWallet] Found existing user:", existing.id);
+    return existing;
+  }
 
-  const suffix = walletAddress.slice(-6).toLowerCase();
+  const normalized = walletAddress.toLowerCase();
+  const suffix = normalized.slice(-6);
   const handle = `user-${suffix}`;
   const displayName = `User ${suffix.toUpperCase()}`;
+
+  console.debug("[ensureUserByWallet] Creating new user with handle:", handle);
 
   const { data, error } = await supabase
     .from("users")
@@ -297,11 +308,35 @@ export async function ensureUserByWallet(
     .select("*")
     .single();
 
-  if (error || !data) {
-    console.error("ensureUserByWallet:", error?.message);
+  if (error) {
+    // Duplicate key — another row already exists for this wallet (different casing).
+    // Fall back to a fresh lookup by handle.
+    if (error.code === "23505") {
+      console.debug("[ensureUserByWallet] Duplicate detected, re-fetching by handle:", handle);
+      const { data: fallback } = await supabase
+        .from("users")
+        .select("*")
+        .eq("handle", handle)
+        .maybeSingle();
+      if (fallback) return mapUserRow(fallback as UserRow);
+    }
+    console.error("[ensureUserByWallet] Error creating user:", {
+      message: error.message,
+      code: error.code,
+      hint: error.hint,
+      details: error.details,
+      handle,
+      wallet: walletAddress,
+    });
     return null;
   }
 
+  if (!data) {
+    console.error("[ensureUserByWallet] No data returned after insert");
+    return null;
+  }
+
+  console.debug("[ensureUserByWallet] Successfully created user:", data.id);
   return mapUserRow(data as UserRow);
 }
 
@@ -311,6 +346,8 @@ export async function updateUsername(
 ): Promise<User | null> {
   const normalizedHandle = handle.trim().toLowerCase();
   const displayName = handle.trim();
+
+  console.debug("[updateUsername] Updating user:", userId, "handle:", normalizedHandle);
 
   const { data, error } = await supabase
     .from("users")
@@ -323,11 +360,24 @@ export async function updateUsername(
     .select("*")
     .single();
 
-  if (error || !data) {
-    console.error("updateUsername:", error?.message);
+  if (error) {
+    console.error("[updateUsername] Error:", {
+      message: error.message,
+      code: error.code,
+      hint: error.hint,
+      details: error.details,
+      userId,
+      handle: normalizedHandle,
+    });
     return null;
   }
 
+  if (!data) {
+    console.error("[updateUsername] No data returned after update", userId);
+    return null;
+  }
+
+  console.debug("[updateUsername] Successfully updated user:", userId);
   return mapUserRow(data as UserRow);
 }
 
@@ -339,7 +389,7 @@ export async function fetchSubscriptionPlans(): Promise<SubscriptionPlan[]> {
     .order("price", { ascending: true });
 
   if (error || !data) {
-    console.error("fetchSubscriptionPlans:", error?.message);
+    console.error("fetchSubscriptionPlans error:", error || "No data returned");
     return [];
   }
 
@@ -382,7 +432,7 @@ export async function fetchAdCampaigns(
     .order("created_at", { ascending: false });
 
   if (error || !data) {
-    console.error("fetchAdCampaigns:", error?.message);
+    console.error("fetchAdCampaigns error:", error || "No data returned");
     return [];
   }
 
@@ -441,7 +491,7 @@ export async function insertPost(
     .single();
 
   if (error || !data) {
-    console.error("insertPost:", error?.message);
+    console.error("insertPost error:", error || "No data returned");
     return null;
   }
 
@@ -467,7 +517,7 @@ export async function saveUserSubscription(
     .single();
 
   if (error || !data) {
-    console.error("saveUserSubscription:", error?.message);
+    console.error("saveUserSubscription error:", error || "No data returned");
     return null;
   }
 
@@ -490,7 +540,7 @@ export async function saveUserAdPreference(
     .single();
 
   if (error || !data) {
-    console.error("saveUserAdPreference:", error?.message);
+    console.error("saveUserAdPreference error:", error || "No data returned");
     return null;
   }
 
@@ -520,7 +570,7 @@ export async function createAdCampaign(
     .single();
 
   if (error || !data) {
-    console.error("createAdCampaign:", error?.message);
+    console.error("createAdCampaign error:", error || "No data returned");
     return null;
   }
 
@@ -539,7 +589,7 @@ export async function insertComment(
     .single();
 
   if (error || !data) {
-    console.error("insertComment:", error?.message);
+    console.error("insertComment error:", error || "No data returned");
     return null;
   }
   return mapCommentRow(data as unknown as CommentRow);
@@ -556,7 +606,7 @@ export async function fetchNotifications(
     .limit(50);
 
   if (error || !data) {
-    console.error("fetchNotifications:", error?.message);
+    console.error("fetchNotifications error:", error || "No data returned");
     return [];
   }
   return (data as unknown as NotificationRow[]).map(mapNotificationRow);

@@ -124,10 +124,12 @@ function AppProviderCore({
           return;
         }
 
+        console.debug("[AppProvider] Ensuring user for wallet:", address);
         const profile = await ensureUserByWallet(address);
         if (canceled) return;
 
         if (profile) {
+          console.debug("[AppProvider] Profile resolved:", profile.id, "handle:", profile.handle);
           const [liked, reposted, subscription, preference] = await Promise.all([
             fetchUserLikes(profile.id),
             fetchUserReposts(profile.id),
@@ -140,8 +142,11 @@ function AppProviderCore({
           setRepostedPosts(reposted);
           setUserSubscription(subscription);
           setAdPreference(preference);
+        } else {
+          console.error("[AppProvider] Failed to ensure user for wallet:", address);
         }
-      } catch {
+      } catch (error) {
+        console.error("[AppProvider] Init error:", error);
         setPosts(MOCK_POSTS);
       } finally {
         if (!canceled) setLoading(false);
@@ -297,9 +302,18 @@ function AppProviderCore({
 
   const completeUsername = useCallback(
     async (handle: string) => {
-      if (!currentUser) return;
+      if (!currentUser) {
+        console.error("[completeUsername] No currentUser available");
+        return;
+      }
+      console.debug("[completeUsername] Starting for user:", currentUser.id);
       const updated = await updateUsername(currentUser.id, handle);
-      if (updated) setCurrentUser(updated);
+      if (updated) {
+        console.debug("[completeUsername] Successfully updated user:", updated.id);
+        setCurrentUser(updated);
+      } else {
+        console.error("[completeUsername] Failed to update username for:", currentUser.id);
+      }
     },
     [currentUser],
   );

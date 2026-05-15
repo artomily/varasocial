@@ -9,7 +9,7 @@ import { useApp } from "@/lib/store";
 const LS_KEY = "vara-onboarding-complete";
 
 export function OnboardingGate() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, status } = useAccount();
   const { connect } = useConnect();
   const { currentUser, completeUsername, loading } = useApp();
   const [handle, setHandle] = useState("");
@@ -40,7 +40,9 @@ export function OnboardingGate() {
 
   const alreadyOnboarded = localStorage.getItem(LS_KEY) === "1";
 
-  const needsConnect = !isConnected || !address;
+  // 'reconnecting' = wagmi is restoring a saved connection (page refresh).
+  // Never show the connect modal during this window — the connection is coming.
+  const needsConnect = status === "disconnected";
   // Only show the "creating profile…" spinner for users who haven't completed
   // onboarding yet.  For existing users it would just flash and disappear.
   const waitingForProfile =

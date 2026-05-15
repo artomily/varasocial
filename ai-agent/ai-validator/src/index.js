@@ -5,6 +5,7 @@ import { startListener } from "./listener.js";
 import { startWorker } from "./worker.js";
 import { startCloneWebhook } from "./clone-listener.js";
 import { startCloneWorker } from "./clone-worker.js";
+import { startLikesWorker } from "./likes-worker.js";
 import { startSyncScheduler } from "./sync-scheduler.js";
 
 // ── Required environment variables ──────────────────────────────────────────
@@ -43,6 +44,9 @@ async function main() {
 
   // Start the clone worker (auto-replies for mode-turu users)
   startCloneWorker();
+
+  // Start the likes milestone worker (50k likes → 0.1 0G reward)
+  startLikesWorker();
 
   // Start the blockchain event listener
   await startListener();

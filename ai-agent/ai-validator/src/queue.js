@@ -30,3 +30,11 @@ export const validationQueue = new Queue(QUEUE_NAME, { connection });
  */
 export const CLONE_QUEUE_NAME = "clone-reply";
 export const cloneQueue = new Queue(CLONE_QUEUE_NAME, { connection });
+
+/**
+ * Likes milestone queue — checks whether a post has crossed 50k likes
+ * and dispatches a 0.1 0G native-token reward to the post author.
+ * Kept separate so it never interferes with validation or clone jobs.
+ */
+export const LIKES_QUEUE_NAME = "likes-milestone";
+export const likesQueue = new Queue(LIKES_QUEUE_NAME, { connection });

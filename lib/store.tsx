@@ -51,6 +51,7 @@ interface AppState {
   varaAIEnabled: boolean;
   sidebarCollapsed: boolean;
   composeOpen: boolean;
+  showOnboardingModal: boolean;
 }
 
 interface AppActions {
@@ -61,6 +62,8 @@ interface AppActions {
   toggleSidebar: () => void;
   openCompose: () => void;
   closeCompose: () => void;
+  openOnboardingModal: () => void;
+  closeOnboardingModal: () => void;
   addComment: (postId: string, content: string, postAuthorId?: string) => void;
   addPost: (content: string, options?: { mediaItems?: MediaItem[]; routeHash?: string }) => void;
   completeUsername: (handle: string) => Promise<void>;
@@ -118,6 +121,9 @@ function AppProviderCore({
   const [composeOpen, setComposeOpen] = useState(false);
   const openCompose = useCallback(() => setComposeOpen(true), []);
   const closeCompose = useCallback(() => setComposeOpen(false), []);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const openOnboardingModal = useCallback(() => setShowOnboardingModal(true), []);
+  const closeOnboardingModal = useCallback(() => setShowOnboardingModal(false), []);
 
   // Bootstrap: load public data and resolve the wallet-linked profile when connected
   useEffect(() => {
@@ -453,6 +459,7 @@ function AppProviderCore({
         varaAIEnabled,
         sidebarCollapsed,
         composeOpen,
+        showOnboardingModal,
         toggleLike,
         toggleRepost,
         toggleFollow,
@@ -460,6 +467,8 @@ function AppProviderCore({
         toggleSidebar,
         openCompose,
         closeCompose,
+        openOnboardingModal,
+        closeOnboardingModal,
         addComment,
         addPost,
         completeUsername,

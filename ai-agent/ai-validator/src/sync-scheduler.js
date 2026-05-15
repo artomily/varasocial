@@ -13,13 +13,13 @@
  * Schedule: runs once on startup, then every SYNC_INTERVAL_HOURS (default 6).
  */
 
-import { createClient } from "@supabase/supabase-js";
 import { MemData, Indexer } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers } from "ethers";
 import "dotenv/config";
 import { logger } from "./logger.js";
 import { setHashFor } from "./operator.js";
 import { ABI } from "./abi.js";
+import { supabase } from "./supabase.js";
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -32,14 +32,6 @@ const OG_INDEXER_RPC =
 
 // Delay (ms) between individual user uploads to avoid RPC rate-limiting
 const USER_DELAY_MS = Number(process.env.SYNC_USER_DELAY_MS ?? 2_000);
-
-// ── Supabase client (service role — server-side only) ─────────────────────────
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
-  { auth: { persistSession: false } }
-);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

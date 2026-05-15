@@ -52,10 +52,37 @@ export default function MonetizePage() {
   const chainId = useChainId();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const { sendTransaction, data: txHash, isPending: isTxPending, error: txError } = useSendTransaction();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
-
   const [showSuccess, setShowSuccess] = useState(false);
   const subscribeCalledRef = useRef(false);
+  const [mounted, setMounted] = useState(false);
+  const [txTimedOut, setTxTimedOut] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Disable the receipt watcher once timed out so it stops polling the RPC
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ 
+    hash: txHash,
+    chainId: zeroGTestnet.id,
+    query: { enabled: !!txHash && !txTimedOut },
+  });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Start a 60-second timeout as soon as we have a txHash and are waiting for confirmation
+  useEffect(() => {
+    if (txHash && !isSuccess) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setTxTimedOut(false);
+      timeoutRef.current = setTimeout(() => {
+        setTxTimedOut(true);
+      }, 60_000);
+    }
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txHash]);
 
   useEffect(() => {
     if (isSuccess && txHash && !subscribeCalledRef.current) {
@@ -66,13 +93,32 @@ export default function MonetizePage() {
   }, [isSuccess, txHash, subscribePlan]);
 
   const isSubscribed = Boolean(userSubscription);
-  const isWrongChain = chainId !== zeroGTestnet.id;
-  const isLoading = isTxPending || isConfirming || isSwitching;
+  // Defer chain-dependent state until after hydration to avoid server/client mismatch
+  const isWrongChain = mounted && chainId !== zeroGTestnet.id;
+  const isLoading = !txTimedOut && (isTxPending || isConfirming || isSwitching);
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (!currentUser) return;
     if (isWrongChain) {
-      switchChain({ chainId: zeroGTestnet.id });
+      try {
+        // Try switching first; if the chain doesn't exist in wallet yet, add it
+        await switchChain({ chainId: zeroGTestnet.id });
+      } catch {
+        try {
+          await (window as Window & { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum?.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: "0x40DA", // 16602 in hex
+              chainName: "0G Newton Testnet",
+              nativeCurrency: { name: "0G", symbol: "0G", decimals: 18 },
+              rpcUrls: ["https://evmrpc-testnet.0g.ai"],
+              blockExplorerUrls: ["https://chainscan-galileo.0g.ai"],
+            }],
+          });
+        } catch (addErr) {
+          console.error("Failed to add 0G network:", addErr);
+        }
+      }
       return;
     }
     const treasury = process.env.NEXT_PUBLIC_TREASURY_ADDRESS;
@@ -80,15 +126,9 @@ export default function MonetizePage() {
       console.error("NEXT_PUBLIC_TREASURY_ADDRESS env var not set");
       return;
     }
-    sendTransaction({ to: treasury as `0x${string}`, value: parseEther("0.05") });
-  };
-
-  // Called after on-chain tx confirmed — sync to Supabase
-  const handleSubscribeSuccess = () => {
-    if (!pendingOnChain) {
-      setPendingOnChain(true);
-      subscribePlan("blue");
-    }
+    setTxTimedOut(false);
+    subscribeCalledRef.current = false;
+    sendTransaction({ to: treasury as `0x${string}`, value: parseEther("0.05"), chainId: zeroGTestnet.id });
   };
 
   return (
@@ -160,9 +200,11 @@ export default function MonetizePage() {
               ))}
             </ul>
 
-            {txError && (
+            {(txError || txTimedOut) && (
               <p className="mb-3 rounded-xl bg-truth-hoax/10 px-3 py-2 text-xs text-truth-hoax">
-                {txError.message.slice(0, 120)}
+                {txTimedOut
+                  ? `Transaction not confirmed after 60s — it may be stuck or dropped. ${txHash ? `Check explorer: https://chainscan-galileo.0g.ai/tx/${txHash}` : ""}`
+                  : txError?.message?.slice(0, 120)}
               </p>
             )}
 
@@ -181,7 +223,7 @@ export default function MonetizePage() {
               ) : (
                 <>
                   <Wallet className="h-4 w-4" />
-                  Pay 0.05 0G
+                  {txTimedOut ? "Retry Payment" : "Pay 0.05 0G"}
                 </>
               )}
             </button>

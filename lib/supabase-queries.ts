@@ -500,14 +500,26 @@ export async function insertPost(
 
 export async function saveUserSubscription(
   userId: string,
-  planId: string,
+  planSlug: string,
   ogTxHash?: string,
 ): Promise<UserSubscription | null> {
+  // Resolve plan UUID from slug
+  const { data: planData, error: planError } = await supabase
+    .from("subscription_plans")
+    .select("id")
+    .eq("slug", planSlug)
+    .single();
+
+  if (planError || !planData) {
+    console.error("saveUserSubscription: plan not found for slug:", planSlug, planError);
+    return null;
+  }
+
   const { data, error } = await supabase
     .from("user_subscriptions")
     .upsert({
       user_id: userId,
-      plan_id: planId,
+      plan_id: (planData as { id: string }).id,
       status: "active",
       starts_at: new Date().toISOString(),
       ends_at: null,

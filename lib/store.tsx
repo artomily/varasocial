@@ -72,9 +72,14 @@ type AppContextType = AppState & AppActions;
 const AppContext = createContext<AppContextType | null>(null);
 
 function AppProviderWithWallet({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const { address, isConnected } = useAccount();
   return (
-    <AppProviderCore address={address} isConnected={isConnected}>
+    <AppProviderCore address={mounted ? address : undefined} isConnected={mounted ? isConnected : false}>
       {children}
     </AppProviderCore>
   );

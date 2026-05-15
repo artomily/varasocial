@@ -17,12 +17,11 @@ export const zeroGTestnet = defineChain({
 export const wagmiConfig = createConfig({
   chains: [mainnet, arbitrum, polygon, optimism, base, zeroGTestnet],
   transports: {
-    [zeroGGalileo.id]: http("https://evmrpc-testnet.0g.ai"),
+    [zeroGTestnet.id]: http("https://evmrpc-testnet.0g.ai"),
     [mainnet.id]: http(),
     [arbitrum.id]: http(),
     [polygon.id]: http(),
     [optimism.id]: http(),
     [base.id]: http(),
-    [zeroGTestnet.id]: http(),
   },
 });

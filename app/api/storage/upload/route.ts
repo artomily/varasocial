@@ -42,15 +42,16 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Real 0G upload — requires:
-  //   npm install @0gfoundation/0g-storage-ts-sdk ethers
-  // then add to og-storage-utils or inline here.
+  // Real 0G upload — requires @0gfoundation/0g-storage-ts-sdk and ethers installed.
+  // We use an indirect path string to prevent Turbopack from statically resolving
+  // the import at build time when the SDK is not present in root node_modules.
   try {
-    // Dynamic import to avoid breaking builds where SDK is not installed
+    const utilsPath = [".", ".", ".", ".", "og-storage-utils", "src", "storage"].join("/");
+    const configPath = [".", ".", ".", ".", "og-storage-utils", "src", "config"].join("/");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const storage = await import("../../../../og-storage-utils/src/storage" as any);
+    const storage = await import(/* webpackIgnore: true */ utilsPath as any);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const configMod = await import("../../../../og-storage-utils/src/config" as any);
+    const configMod = await import(/* webpackIgnore: true */ configPath as any);
     const config = configMod.getConfig();
     const result = await storage.uploadData(bytes, config);
     return Response.json({ rootHash: result.rootHash, txHash: result.txHash });

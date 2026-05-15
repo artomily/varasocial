@@ -106,11 +106,12 @@ export async function updateAdStatus(campaignId, isSafe, reason, txHash) {
 
 /**
  * Mark a user as 'processing' when their subscription validation job starts.
+ * Clears ai_report and ai_status so the frontend poll waits for the fresh result.
  */
 export async function setUserProcessing(walletAddress) {
   const { error } = await supabase
     .from("users")
-    .update({ verified: false })
+    .update({ verified: false, ai_status: "processing", ai_report: null })
     .ilike("wallet_address", walletAddress);
 
   if (error) {
@@ -129,6 +130,7 @@ export async function updateUserStatus(walletAddress, isSafe, reason, txHash) {
     .from("users")
     .update({
       verified: isSafe ? true : false,
+      ai_status: isSafe ? "approved" : "rejected",
       ai_report: reason ?? null,
       tx_hash: txHash,
     })

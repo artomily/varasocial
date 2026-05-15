@@ -3,6 +3,7 @@ import { RightPanel } from "@/components/layout/RightPanel";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { AppProvider } from "@/lib/store";
 import { OnboardingGate } from "@/components/layout/OnboardingGate";
+import { ComposeModal } from "@/components/compose/ComposeModal";
 
 export default function MainLayout({
   children,
@@ -11,6 +12,7 @@ export default function MainLayout({
 }) {
   return (
     <AppProvider>
+      <ComposeModal />
       <div className="mx-auto flex min-h-screen max-w-316.25">
         <OnboardingGate />
         {/* Left sidebar — hidden on mobile */}

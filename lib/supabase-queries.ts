@@ -25,6 +25,7 @@ type UserRow = {
   bio: string | null;
   wallet_connected_at: string | null;
   username_set_at: string | null;
+  ai_report: string | null;
 };
 
 type PostRow = {
@@ -33,9 +34,9 @@ type PostRow = {
   content: string;
   media: MediaItem[] | null;
   created_at: string;
-  truth_score: number;
+  truth_score: number | null;
   truth_level: string;
-  virality_score: number;
+  virality_score: number | null;
   vara_reward: number | null;
   likes_count: number;
   reposts_count: number;
@@ -123,6 +124,7 @@ export function mapUserRow(row: UserRow): User {
     bio: row.bio ?? undefined,
     walletConnectedAt: row.wallet_connected_at ?? undefined,
     usernameSetAt: row.username_set_at ?? undefined,
+    aiReport: row.ai_report ?? undefined,
   };
 }
 
@@ -136,9 +138,9 @@ function mapPostRow(row: PostRow): Post {
     likes: row.likes_count,
     reposts: row.reposts_count,
     replies: row.replies_count,
-    truthScore: row.truth_score,
-    truthLevel: row.truth_level as TruthLevel,
-    viralityScore: row.virality_score,
+    truthScore: row.truth_score ?? null,
+    truthLevel: (row.truth_level as TruthLevel) ?? "pending",
+    viralityScore: row.virality_score ?? 0,
     varaReward: row.vara_reward ?? undefined,
     routeHash: row.route_hash ?? undefined,
   };
@@ -470,6 +472,26 @@ export async function fetchUserReposts(userId: string): Promise<Set<string>> {
 
 // ─── Mutations ───────────────────────────────────────────────────────────────
 
+export async function fetchPostTruthStatus(postId: string): Promise<{
+  truthScore: number | null;
+  truthLevel: TruthLevel;
+  viralityScore: number;
+} | null> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("truth_score, truth_level, virality_score")
+    .eq("id", postId)
+    .single();
+
+  if (error || !data) return null;
+  const row = data as { truth_score: number | null; truth_level: string; virality_score: number | null };
+  return {
+    truthScore: row.truth_score ?? null,
+    truthLevel: (row.truth_level as TruthLevel) ?? "pending",
+    viralityScore: row.virality_score ?? 0,
+  };
+}
+
 export async function insertPost(
   authorId: string,
   content: string,
@@ -483,9 +505,9 @@ export async function insertPost(
       content,
       media: media.length > 0 ? media : null,
       route_hash: routeHash ?? null,
-      truth_score: Math.floor(Math.random() * 30) + 70,
-      truth_level: "valid",
-      virality_score: Math.floor(Math.random() * 40) + 10,
+      truth_score: null,
+      truth_level: "pending",
+      virality_score: 0,
     })
     .select("*, users!author_id(*)")
     .single();
@@ -567,26 +589,35 @@ export async function createAdCampaign(
   placements: string[],
   routeHash?: string,
 ): Promise<AdCampaign | null> {
-  const { data, error } = await supabase
-    .from("ad_campaigns")
-    .insert({
-      owner_id: ownerId,
-      title,
-      objective,
-      budget,
-      placements,
-      status: "draft",
-      route_hash: routeHash ?? null,
-    })
-    .select("*")
-    .single();
+  // Uses the server-side API route (/api/ad-campaigns) which runs with the
+  // Supabase service-role key, bypassing RLS. Direct Supabase insert from the
+  // browser would fail because auth.uid() is null in a wallet-only app.
+  try {
+    const res = await fetch("/api/ad-campaigns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        owner_id: ownerId,
+        title,
+        objective,
+        budget,
+        placements,
+        route_hash: routeHash ?? null,
+      }),
+    });
 
-  if (error || !data) {
-    console.error("createAdCampaign error:", error || "No data returned");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      console.error("createAdCampaign error:", err);
+      return null;
+    }
+
+    const data = await res.json();
+    return mapAdCampaignRow(data as AdCampaignRow);
+  } catch (err) {
+    console.error("createAdCampaign fetch error:", err);
     return null;
   }
-
-  return mapAdCampaignRow(data as AdCampaignRow);
 }
 
 export async function insertComment(
@@ -698,4 +729,52 @@ export async function deleteRepost(
     .from("reposts")
     .delete()
     .match({ post_id: postId, user_id: userId });
+}
+
+/**
+ * Fetch the AI moderation result for a specific ad campaign.
+ * Uses the server-side API route to bypass RLS (wallet-only app has no Supabase Auth session).
+ * Returns null when the validator hasn't written a decision yet (ai_status is null or 'processing').
+ * Call this in a polling loop after the requestAdPlacement tx is confirmed.
+ */
+export async function fetchAdCampaignValidation(
+  campaignId: string,
+): Promise<{ approved: boolean; aiReport: string } | null> {
+  try {
+    const res = await fetch(`/api/ad-campaigns/${campaignId}/validation`);
+    if (!res.ok) return null;
+    const data = await res.json() as { verified: boolean | null; ai_report: string | null };
+    // verified is null while the AI validator hasn't written a decision yet
+    if (data.verified === null || data.verified === undefined) return null;
+    return {
+      approved: data.verified === true,
+      aiReport: data.ai_report ?? (data.verified ? "Approved" : "Rejected"),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch the AI validation result for a user by wallet address.
+ * Returns null when the validator hasn't written a decision yet (ai_status is null or 'processing').
+ * Call this in a polling loop after the subscription tx is confirmed.
+ */
+export async function fetchUserAiValidation(
+  walletAddress: string,
+): Promise<{ verified: boolean; aiReport: string } | null> {
+  const { data, error } = await supabase
+    .from("users")
+    .select("verified, ai_status, ai_report")
+    .ilike("wallet_address", walletAddress)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  // Only resolve once ai_status is a final state (approved or rejected)
+  const status = data.ai_status as string | null;
+  if (!status || status === "processing") return null;
+  return {
+    verified: data.verified as boolean,
+    aiReport: (data.ai_report as string | null) ?? status,
+  };
 }

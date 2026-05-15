@@ -13,7 +13,7 @@ import { MoreMenu } from "@/components/layout/MoreMenu";
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { varaAIEnabled, toggleVaraAI, sidebarCollapsed, toggleSidebar, currentUser, userSubscription } = useApp();
+  const { varaAIEnabled, toggleVaraAI, sidebarCollapsed, toggleSidebar, currentUser, userSubscription, openCompose } = useApp();
 
   const handleVaraAIToggle = () => {
     if (!userSubscription) {
@@ -82,6 +82,7 @@ export function Sidebar() {
 
         {/* Post button */}
         <button
+          onClick={openCompose}
           className={`mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-accent py-3 text-base font-bold text-white transition-colors hover:bg-accent-hover ${
             sidebarCollapsed ? "px-3" : "px-6"
           }`}

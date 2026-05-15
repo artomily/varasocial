@@ -180,3 +180,60 @@ export async function checkBalance() {
     });
   }
 }
+
+/**
+ * Send native 0G tokens directly to a wallet address (plain ETH transfer,
+ * no contract call needed).
+ *
+ * Used to pay out the 50k-likes milestone reward.
+ *
+ * @param {string} toAddress    Recipient wallet address
+ * @param {string} amountEther  Amount in 0G (ether units), e.g. "0.1"
+ * @returns {Promise<string>}   Confirmed transaction hash
+ */
+export async function sendNativeTransfer(toAddress, amountEther) {
+  const MAX_RETRIES = 3;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      // getContract() initialises _provider and _wallet as a side-effect
+      getContract();
+
+      const value = ethers.parseEther(amountEther);
+
+      const feeData = await _provider.getFeeData();
+      const rawGasPrice = feeData.gasPrice ?? ethers.parseUnits("5", "gwei");
+      const ceiling = ethers.parseUnits("10", "gwei");
+      const gasPrice =
+        ((rawGasPrice * 110n) / 100n) < ceiling
+          ? (rawGasPrice * 110n) / 100n
+          : ceiling;
+
+      const tx = await _wallet.sendTransaction({ to: toAddress, value, gasPrice });
+
+      logger.info("Native transfer submitted", {
+        to: toAddress,
+        amount: amountEther + " 0G",
+        hash: tx.hash,
+      });
+
+      const receipt = await tx.wait(1);
+      logger.info("Native transfer confirmed", {
+        hash: receipt.hash,
+        block: receipt.blockNumber,
+      });
+
+      return receipt.hash;
+    } catch (err) {
+      if (attempt === MAX_RETRIES - 1 || !isRetryable(err)) throw err;
+
+      resetSingletons();
+      const delay = 2_000 * 2 ** attempt;
+      logger.warn(
+        `Native transfer failed (attempt ${attempt + 1}/${MAX_RETRIES}), retry in ${delay}ms`,
+        { error: err.message }
+      );
+      await sleep(delay);
+    }
+  }
+}

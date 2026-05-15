@@ -117,3 +117,91 @@ export async function checkSARA(text) {
     };
   }
 }
+
+const TRUTH_SYSTEM_PROMPT =
+  'Anda adalah sistem penilaian kebenaran konten media sosial. ' +
+  'Tugas Anda menilai apakah sebuah postingan mengandung hoaks, disinformasi, atau konten SARA ' +
+  '(Suku, Agama, Ras, Antar-golongan) yang merugikan orang lain. ' +
+  'Balas HANYA dengan JSON valid: ' +
+  '{"truth_score": number, "truth_level": "valid"|"suspicious"|"hoax", "reason": "string"}. ' +
+  'truth_score adalah angka 0-100 (100 = sangat valid/faktual, 0 = hoaks/berbahaya). ' +
+  'truth_level: "valid" jika skor >= 70, "suspicious" jika 40-69, "hoax" jika < 40. ' +
+  'Jangan berikan opini, hanya hasil penilaian objektif.';
+
+/**
+ * Assess a post's truthfulness / SARA content via OpenRouter.
+ *
+ * Returns a conservative default (truth_score=50, truth_level="suspicious")
+ * when the LLM response cannot be parsed, so unanalysed posts are never
+ * silently marked as valid.
+ *
+ * @param {string} text  Post content to evaluate
+ * @returns {Promise<{ truth_score: number, truth_level: "valid"|"suspicious"|"hoax", reason: string }>}
+ */
+export async function assessTruthScore(text) {
+  let response;
+  try {
+    response = await fetchWithRetry(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://varasocial.app",
+        "X-Title": "VaraSocial AI Validator",
+      },
+      body: JSON.stringify({
+        model: process.env.LLM_MODEL ?? "google/gemini-2.0-flash-exp",
+        messages: [
+          { role: "system", content: TRUTH_SYSTEM_PROMPT },
+          { role: "user", content: text },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0,
+      }),
+    });
+  } catch (err) {
+    logger.error("OpenRouter unreachable (truth score) — returning suspicious default", {
+      error: err.message,
+    });
+    return { truth_score: 50, truth_level: "suspicious", reason: "AI service unreachable" };
+  }
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`OpenRouter ${response.status}: ${body}`);
+  }
+
+  const json = await response.json();
+  const raw = json.choices?.[0]?.message?.content;
+
+  try {
+    const parsed = JSON.parse(raw);
+    const score = Number(parsed.truth_score);
+    const level = parsed.truth_level;
+
+    if (
+      !Number.isFinite(score) ||
+      score < 0 ||
+      score > 100 ||
+      !["valid", "suspicious", "hoax"].includes(level)
+    ) {
+      throw new Error("Invalid truth_score or truth_level in AI response");
+    }
+
+    return {
+      truth_score: Math.round(score),
+      truth_level: level,
+      reason: typeof parsed.reason === "string" ? parsed.reason : "",
+    };
+  } catch (err) {
+    logger.error("Failed to parse truth score AI response — returning suspicious default", {
+      raw,
+      parseError: err.message,
+    });
+    return {
+      truth_score: 50,
+      truth_level: "suspicious",
+      reason: "AI response parse error — defaulted to suspicious",
+    };
+  }
+}

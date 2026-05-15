@@ -255,3 +255,143 @@ export async function insertAiReply(postId, authorId, content) {
     throw new Error(`supabase.insertAiReply: ${error.message}`);
   }
 }
+
+// ── Likes Milestone helpers ────────────────────────────────────────────────
+
+/**
+ * Fetch the data needed to evaluate the 50k likes milestone for a post.
+ * Returns the post's current likes_count, reward state, and the author's
+ * wallet address (null if the author has not connected a wallet yet).
+ *
+ * @param {string} postId  — UUID of the post
+ * @returns {{ likes_count: number, likes_milestone_rewarded: boolean, author_id: string, wallet_address: string|null } | null}
+ */
+export async function getPostForLikesCheck(postId) {
+  const { data: post, error: postErr } = await supabase
+    .from("posts")
+    .select("id, likes_count, likes_milestone_rewarded, author_id")
+    .eq("id", postId)
+    .single();
+
+  if (postErr) {
+    throw new Error(`supabase.getPostForLikesCheck: ${postErr.message}`);
+  }
+  if (!post) return null;
+
+  const { data: user, error: userErr } = await supabase
+    .from("users")
+    .select("wallet_address")
+    .eq("id", post.author_id)
+    .single();
+
+  if (userErr) {
+    throw new Error(`supabase.getPostForLikesCheck (user): ${userErr.message}`);
+  }
+
+  return {
+    likes_count: post.likes_count,
+    likes_milestone_rewarded: post.likes_milestone_rewarded,
+    author_id: post.author_id,
+    wallet_address: user?.wallet_address ?? null,
+  };
+}
+
+/**
+ * Atomically claim the 50k likes milestone reward for a post.
+ * Sets likes_milestone_rewarded = true only when it is currently false,
+ * preventing double-payment even if multiple jobs arrive concurrently.
+ *
+ * @param {string} postId
+ * @returns {Promise<boolean>}  true if we claimed it; false if already rewarded
+ */
+export async function claimLikesMilestone(postId) {
+  const { data, error } = await supabase
+    .from("posts")
+    .update({ likes_milestone_rewarded: true })
+    .eq("id", postId)
+    .eq("likes_milestone_rewarded", false)
+    .select("id");
+
+  if (error) {
+    throw new Error(`supabase.claimLikesMilestone: ${error.message}`);
+  }
+  return (data ?? []).length > 0;
+}
+
+/**
+ * Persist the on-chain transaction hash after the reward transfer is confirmed.
+ *
+ * @param {string} postId
+ * @param {string} txHash
+ */
+export async function setLikesMilestoneTx(postId, txHash) {
+  const { error } = await supabase
+    .from("posts")
+    .update({ likes_milestone_tx: txHash })
+    .eq("id", postId);
+
+  if (error) {
+    logger.warn("supabase.setLikesMilestoneTx failed", { postId, error: error.message });
+  }
+}
+
+/**
+ * Roll back a failed milestone claim so the job can be retried by BullMQ.
+ * Called when the on-chain transfer throws after we already set the flag.
+ *
+ * @param {string} postId
+ */
+export async function rollbackLikesMilestone(postId) {
+  const { error } = await supabase
+    .from("posts")
+    .update({ likes_milestone_rewarded: false })
+    .eq("id", postId);
+
+  if (error) {
+    logger.warn("supabase.rollbackLikesMilestone failed", { postId, error: error.message });
+  }
+}
+
+// ── Truth Score helpers ────────────────────────────────────────────────────
+
+/**
+ * Fetch post content for truth-score analysis.
+ *
+ * @param {string} postId
+ * @returns {{ id: string, content: string } | null}
+ */
+export async function getPostContent(postId) {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("id, content")
+    .eq("id", postId)
+    .single();
+
+  if (error) {
+    throw new Error(`supabase.getPostContent: ${error.message}`);
+  }
+  return data ?? null;
+}
+
+/**
+ * Persist the AI-generated truth score and truth level on a post.
+ *
+ * @param {string} postId
+ * @param {number} truthScore   0-100
+ * @param {"valid"|"suspicious"|"hoax"} truthLevel
+ * @param {string} reason       AI explanation
+ */
+export async function updatePostTruthScore(postId, truthScore, truthLevel, reason) {
+  const { error } = await supabase
+    .from("posts")
+    .update({
+      truth_score: truthScore,
+      truth_level: truthLevel,
+      ai_report: reason ?? null,
+    })
+    .eq("id", postId);
+
+  if (error) {
+    throw new Error(`supabase.updatePostTruthScore: ${error.message}`);
+  }
+}

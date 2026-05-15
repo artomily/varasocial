@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import "dotenv/config";
-import { cloneQueue } from "./queue.js";
+import { cloneQueue, likesQueue, truthQueue } from "./queue.js";
 import { flushCache, isCacheEnabled } from "./cache.js";
 import { logger } from "./logger.js";
 
@@ -58,7 +58,8 @@ function parseBody(body) {
 export function startCloneWebhook() {
   const server = createServer(async (req, res) => {
     // ── Route guard ──────────────────────────────────────────────────────────
-    if (req.method !== "POST" || ![ "/webhook/comment", "/webhook/cache-reset" ].includes(req.url)) {
+    const ALLOWED = ["/webhook/comment", "/webhook/cache-reset", "/webhook/like", "/webhook/post"];
+    if (req.method !== "POST" || !ALLOWED.includes(req.url)) {
       res.writeHead(404).end("Not Found");
       return;
     }
@@ -94,10 +95,71 @@ export function startCloneWebhook() {
       return;
     }
 
-    // ── Read body (only for /webhook/comment) ────────────────────────────────
+    // ── Read body ─────────────────────────────────────────────────────────────
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
-    const payload = parseBody(Buffer.concat(chunks));
+    const rawBody = Buffer.concat(chunks);
+
+    // ── Route: POST /webhook/post ─────────────────────────────────────────────
+    if (req.url === "/webhook/post") {
+      let postPayload;
+      try {
+        const obj = JSON.parse(rawBody.toString("utf8"));
+        if (typeof obj.post_id === "string") postPayload = { post_id: obj.post_id };
+      } catch { /* handled below */ }
+
+      if (!postPayload) {
+        res.writeHead(400).end("Bad Request");
+        return;
+      }
+
+      try {
+        await truthQueue.add(
+          "truth-score",
+          { post_id: postPayload.post_id },
+          CLONE_JOB_OPTIONS
+        );
+        logger.info("Webhook: truth score job enqueued", { post_id: postPayload.post_id });
+        res.writeHead(202, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ queued: true }));
+      } catch (err) {
+        logger.error("Webhook: failed to enqueue truth score job", { error: err.message });
+        res.writeHead(500).end("Internal Server Error");
+      }
+      return;
+    }
+
+    // ── Route: POST /webhook/like ─────────────────────────────────────────────
+    if (req.url === "/webhook/like") {
+      let likePayload;
+      try {
+        const obj = JSON.parse(rawBody.toString("utf8"));
+        if (typeof obj.post_id === "string") likePayload = { post_id: obj.post_id };
+      } catch { /* handled below */ }
+
+      if (!likePayload) {
+        res.writeHead(400).end("Bad Request");
+        return;
+      }
+
+      try {
+        await likesQueue.add(
+          "likes-milestone",
+          { post_id: likePayload.post_id },
+          CLONE_JOB_OPTIONS
+        );
+        logger.info("Webhook: likes milestone job enqueued", { post_id: likePayload.post_id });
+        res.writeHead(202, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ queued: true }));
+      } catch (err) {
+        logger.error("Webhook: failed to enqueue likes job", { error: err.message });
+        res.writeHead(500).end("Internal Server Error");
+      }
+      return;
+    }
+
+    // ── Route: POST /webhook/comment ──────────────────────────────────────────
+    const payload = parseBody(rawBody);
 
     if (!payload) {
       res.writeHead(400).end("Bad Request");
@@ -130,7 +192,9 @@ export function startCloneWebhook() {
   });
 
   server.listen(PORT, () => {
-    logger.info(`Clone webhook listening on :${PORT} — POST /webhook/comment`);
+    logger.info(
+      `Clone webhook listening on :${PORT} — POST /webhook/comment | /webhook/post | /webhook/like | /webhook/cache-reset`
+    );
   });
 
   server.on("error", (err) => {

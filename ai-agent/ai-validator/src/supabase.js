@@ -351,3 +351,47 @@ export async function rollbackLikesMilestone(postId) {
     logger.warn("supabase.rollbackLikesMilestone failed", { postId, error: error.message });
   }
 }
+
+// ── Truth Score helpers ────────────────────────────────────────────────────
+
+/**
+ * Fetch post content for truth-score analysis.
+ *
+ * @param {string} postId
+ * @returns {{ id: string, content: string } | null}
+ */
+export async function getPostContent(postId) {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("id, content")
+    .eq("id", postId)
+    .single();
+
+  if (error) {
+    throw new Error(`supabase.getPostContent: ${error.message}`);
+  }
+  return data ?? null;
+}
+
+/**
+ * Persist the AI-generated truth score and truth level on a post.
+ *
+ * @param {string} postId
+ * @param {number} truthScore   0-100
+ * @param {"valid"|"suspicious"|"hoax"} truthLevel
+ * @param {string} reason       AI explanation
+ */
+export async function updatePostTruthScore(postId, truthScore, truthLevel, reason) {
+  const { error } = await supabase
+    .from("posts")
+    .update({
+      truth_score: truthScore,
+      truth_level: truthLevel,
+      ai_report: reason ?? null,
+    })
+    .eq("id", postId);
+
+  if (error) {
+    throw new Error(`supabase.updatePostTruthScore: ${error.message}`);
+  }
+}

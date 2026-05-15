@@ -38,3 +38,11 @@ export const cloneQueue = new Queue(CLONE_QUEUE_NAME, { connection });
  */
 export const LIKES_QUEUE_NAME = "likes-milestone";
 export const likesQueue = new Queue(LIKES_QUEUE_NAME, { connection });
+
+/**
+ * Truth score queue — runs AI content analysis on newly created posts
+ * to assign a truth_score (0-100) and truth_level (valid/suspicious/hoax).
+ * Separate queue so truth scoring never blocks validation or reward jobs.
+ */
+export const TRUTH_QUEUE_NAME = "truth-score";
+export const truthQueue = new Queue(TRUTH_QUEUE_NAME, { connection });

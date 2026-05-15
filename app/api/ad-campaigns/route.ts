@@ -4,6 +4,44 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 
 /**
+ * GET /api/ad-campaigns?owner_id=<uuid>
+ * Returns all ad campaigns for the given owner using the service-role key to
+ * bypass RLS (wallet-first app has no Supabase Auth session, so auth.uid() is
+ * always null and the old owner-based policies would block all reads).
+ */
+export async function GET(request: NextRequest) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceKey) {
+    return Response.json(
+      { error: "Server misconfiguration: missing Supabase credentials" },
+      { status: 500 },
+    );
+  }
+
+  const ownerId = request.nextUrl.searchParams.get("owner_id");
+  if (!ownerId) {
+    return Response.json({ error: "owner_id query param required" }, { status: 400 });
+  }
+
+  const supabaseAdmin = createClient(url, serviceKey);
+
+  const { data, error } = await supabaseAdmin
+    .from("ad_campaigns")
+    .select("*")
+    .eq("owner_id", ownerId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[GET /api/ad-campaigns] Supabase error:", error);
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+
+  return Response.json(data ?? []);
+}
+
+/**
  * POST /api/ad-campaigns
  * Creates an ad campaign using the service-role key to bypass RLS.
  * The browser passes owner_id from the wallet-linked user profile.

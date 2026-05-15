@@ -106,6 +106,12 @@ export interface AdCampaign {
   placements: string[];
   status: string;
   routeHash?: string;
+  aiStatus?: string | null;
+  aiReport?: string | null;
+  impressions: number;
+  clicks: number;
+  spent: number;
+  createdAt?: string;
 }
 
 export interface PostStorageRoute {

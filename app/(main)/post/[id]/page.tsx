@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Heart, MessageCircle, Repeat2, Share } from "lucide-react";
 import { useApp } from "@/lib/store";
@@ -41,8 +41,13 @@ export default function PostDetailPage({
     toggleRepost,
     addComment,
     likeComment,
+    loadComments,
   } = useApp();
   const [newComment, setNewComment] = useState("");
+
+  useEffect(() => {
+    loadComments(id);
+  }, [id, loadComments]);
 
   const post = posts.find((p) => p.id === id);
   if (!post) {
@@ -53,7 +58,7 @@ export default function PostDetailPage({
 
   const postComments = comments.filter((c) => c.postId === id);
   const aiComment = postComments.find((c) => c.isAI);
-  const userComments = postComments.filter((c) => !c.isAI);
+  const userComments = postComments.filter((c) => !c.isAI || c.id !== aiComment?.id);
   const showAIAnalytics = varaAIEnabled;
 
   const isLiked = likedPosts.has(post.id);

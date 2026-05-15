@@ -99,6 +99,9 @@ export async function checkSARA(text) {
 
   try {
     const parsed = JSON.parse(raw);
+    // Coerce string booleans that some models return instead of JSON booleans
+    if (parsed.is_safe === "true") parsed.is_safe = true;
+    else if (parsed.is_safe === "false") parsed.is_safe = false;
     if (typeof parsed.is_safe !== "boolean") {
       throw new Error('Missing or invalid "is_safe" field');
     }

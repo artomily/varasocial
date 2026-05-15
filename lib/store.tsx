@@ -17,6 +17,7 @@ import {
 } from "@/lib/mock-data";
 import {
   fetchPosts,
+  fetchComments,
   ensureUserByWallet,
   fetchUserLikes,
   fetchUserReposts,
@@ -32,6 +33,7 @@ import {
   upsertRepost,
   deleteRepost,
   insertNotification,
+  fetchPostTruthStatus,
 } from "@/lib/supabase-queries";
 import type { UserAdPreference, UserSubscription } from "@/lib/types";
 
@@ -48,6 +50,7 @@ interface AppState {
   followingUsers: Set<string>;
   varaAIEnabled: boolean;
   sidebarCollapsed: boolean;
+  composeOpen: boolean;
 }
 
 interface AppActions {
@@ -56,6 +59,8 @@ interface AppActions {
   toggleFollow: (userId: string) => void;
   toggleVaraAI: () => void;
   toggleSidebar: () => void;
+  openCompose: () => void;
+  closeCompose: () => void;
   addComment: (postId: string, content: string, postAuthorId?: string) => void;
   addPost: (content: string, options?: { mediaItems?: MediaItem[]; routeHash?: string }) => void;
   completeUsername: (handle: string) => Promise<void>;
@@ -65,6 +70,7 @@ interface AppActions {
   ) => Promise<void>;
   sendMessage: (userId: string, text: string) => void;
   likeComment: (commentId: string) => void;
+  loadComments: (postId: string) => Promise<void>;
 }
 
 type AppContextType = AppState & AppActions;
@@ -109,6 +115,9 @@ function AppProviderCore({
   );
   const [varaAIEnabled, setVaraAIEnabled] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const openCompose = useCallback(() => setComposeOpen(true), []);
+  const closeCompose = useCallback(() => setComposeOpen(false), []);
 
   // Bootstrap: load public data and resolve the wallet-linked profile when connected
   useEffect(() => {
@@ -189,6 +198,11 @@ function AppProviderCore({
         if (postAuthorId && postAuthorId !== currentUser.id) {
           insertNotification(postAuthorId, currentUser.id, "like", postId);
         }
+        fetch("/api/webhook/like", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ post_id: postId }),
+        }).catch(() => {});
       }
     }
   }, [likedPosts, currentUser]);
@@ -267,6 +281,11 @@ function AppProviderCore({
           if (postAuthorId && postAuthorId !== currentUser.id) {
             insertNotification(postAuthorId, currentUser.id, "reply", postId);
           }
+          fetch("/api/webhook/comment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ post_id: postId, comment_id: saved.id, author_id: currentUser.id }),
+          }).catch(() => {});
         }
       });
     },
@@ -288,9 +307,9 @@ function AppProviderCore({
         likes: 0,
         reposts: 0,
         replies: 0,
-        truthScore: Math.floor(Math.random() * 30) + 70,
-        truthLevel: "valid",
-        viralityScore: Math.floor(Math.random() * 40) + 10,
+        truthScore: null,
+        truthLevel: "pending",
+        viralityScore: 0,
       };
       setPosts((prev) => [tempPost, ...prev]);
 
@@ -299,6 +318,33 @@ function AppProviderCore({
           setPosts((prev) =>
             prev.map((p) => (p.id === tempId ? saved : p))
           );
+          fetch("/api/webhook/post", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ post_id: saved.id }),
+          }).catch(() => {});
+
+          // Polling: setiap 3 detik cek sampai AI selesai validasi (maks 60 detik)
+          let attempts = 0;
+          const timer = setInterval(async () => {
+            attempts++;
+            try {
+              const result = await fetchPostTruthStatus(saved.id);
+              if (result && result.truthLevel !== "pending") {
+                setPosts((prev) =>
+                  prev.map((p) =>
+                    p.id === saved.id
+                      ? { ...p, truthScore: result.truthScore, truthLevel: result.truthLevel, viralityScore: result.viralityScore }
+                      : p
+                  )
+                );
+                clearInterval(timer);
+              }
+            } catch {
+              // silent retry
+            }
+            if (attempts >= 20) clearInterval(timer); // berhenti setelah 60 detik
+          }, 3_000);
         }
       });
     },
@@ -375,6 +421,22 @@ function AppProviderCore({
     );
   }, []);
 
+  const loadComments = useCallback(async (postId: string) => {
+    const fetched = await fetchComments(postId);
+    if (fetched.length === 0) return;
+    setComments((prev) => {
+      // Remove existing (non-optimistic) comments for this post, then merge
+      const withoutThisPost = prev.filter(
+        (c) => c.postId !== postId || c.id.startsWith("temp-")
+      );
+      // Preserve any in-flight optimistic comments
+      const optimistic = prev.filter(
+        (c) => c.postId === postId && c.id.startsWith("temp-")
+      );
+      return [...withoutThisPost.filter((c) => c.postId !== postId), ...fetched, ...optimistic];
+    });
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -390,11 +452,14 @@ function AppProviderCore({
         followingUsers,
         varaAIEnabled,
         sidebarCollapsed,
+        composeOpen,
         toggleLike,
         toggleRepost,
         toggleFollow,
         toggleVaraAI,
         toggleSidebar,
+        openCompose,
+        closeCompose,
         addComment,
         addPost,
         completeUsername,
@@ -402,6 +467,7 @@ function AppProviderCore({
         saveAdPreference,
         sendMessage,
         likeComment,
+        loadComments,
       }}
     >
       {children}

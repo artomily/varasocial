@@ -1,14 +1,37 @@
 "use client";
 
 import {
-  useSendTransaction,
+  useWriteContract,
+  useReadContract,
   useWaitForTransactionReceipt,
   useSwitchChain,
   useChainId,
 } from "wagmi";
-import { parseEther } from "viem";
+import { formatEther } from "viem";
 import { zeroGTestnet } from "@/lib/wagmi-config";
 import { useEffect, useRef, useState } from "react";
+import { fetchUserAiValidation } from "@/lib/supabase-queries";
+import { BRAND, SUBSCRIPTION_PRICE_0G } from "@/lib/constants";
+
+// Minimal ABI — hanya fungsi yang dipakai di halaman ini
+const GATEKEEPER_ABI = [
+  {
+    name: "subscriptionPrice",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    name: "requestSubscription",
+    type: "function",
+    stateMutability: "payable",
+    inputs: [],
+    outputs: [],
+  },
+] as const;
+
+const GATEKEEPER_ADDRESS = process.env.NEXT_PUBLIC_GATEKEEPER_ADDRESS as `0x${string}` | undefined;
 import {
   BadgeCheck,
   Bot,
@@ -51,12 +74,25 @@ export default function MonetizePage() {
   const { currentUser, userSubscription, subscribePlan, saveAdPreference } = useApp();
   const chainId = useChainId();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
-  const { sendTransaction, data: txHash, isPending: isTxPending, error: txError } = useSendTransaction();
+  const { writeContract, data: txHash, isPending: isTxPending, error: txError } = useWriteContract();
+
+  // Baca harga subscription langsung dari kontrak
+  const { data: subscriptionPrice } = useReadContract({
+    address: GATEKEEPER_ADDRESS,
+    abi: GATEKEEPER_ABI,
+    functionName: "subscriptionPrice",
+    chainId: zeroGTestnet.id,
+    query: { enabled: !!GATEKEEPER_ADDRESS },
+  });
+
   const [showSuccess, setShowSuccess] = useState(false);
+  const [aiValidating, setAiValidating] = useState(false);
+  const [aiResult, setAiResult] = useState<{ approved: boolean; reason: string } | null>(null);
   const subscribeCalledRef = useRef(false);
   const [mounted, setMounted] = useState(false);
   const [txTimedOut, setTxTimedOut] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Disable the receipt watcher once timed out so it stops polling the RPC
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ 
@@ -87,10 +123,38 @@ export default function MonetizePage() {
   useEffect(() => {
     if (isSuccess && txHash && !subscribeCalledRef.current) {
       subscribeCalledRef.current = true;
-      setShowSuccess(true);
-      subscribePlan("blue", txHash);
+      // Don't mark as subscribed immediately — wait for AI validator to finish
+      setAiValidating(true);
+
+      const walletAddress = currentUser?.walletAddress;
+      if (!walletAddress) return;
+
+      // Poll Supabase every 3 s for up to 3 minutes
+      let attempts = 0;
+      const MAX_ATTEMPTS = 60; // 60 × 3 s = 3 min
+      pollRef.current = setInterval(async () => {
+        attempts++;
+        const result = await fetchUserAiValidation(walletAddress);
+        if (result) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setAiValidating(false);
+          setAiResult({ approved: result.verified, reason: result.aiReport });
+          if (result.verified) {
+            setShowSuccess(true);
+            subscribePlan("blue", txHash);
+          }
+        } else if (attempts >= MAX_ATTEMPTS) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setAiValidating(false);
+          setAiResult({ approved: false, reason: "Validation timed out — the AI validator may be busy. Check back later." });
+        }
+      }, 3_000);
     }
-  }, [isSuccess, txHash, subscribePlan]);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuccess, txHash]);
 
   const isSubscribed = Boolean(userSubscription);
   // Defer chain-dependent state until after hydration to avoid server/client mismatch
@@ -121,19 +185,91 @@ export default function MonetizePage() {
       }
       return;
     }
-    const treasury = process.env.NEXT_PUBLIC_TREASURY_ADDRESS;
-    if (!treasury) {
-      console.error("NEXT_PUBLIC_TREASURY_ADDRESS env var not set");
+    if (!GATEKEEPER_ADDRESS) {
+      console.error("NEXT_PUBLIC_GATEKEEPER_ADDRESS env var not set");
+      return;
+    }
+    if (!subscriptionPrice) {
+      console.error("subscriptionPrice not loaded from contract yet");
       return;
     }
     setTxTimedOut(false);
     subscribeCalledRef.current = false;
-    sendTransaction({ to: treasury as `0x${string}`, value: parseEther("0.05"), chainId: zeroGTestnet.id });
+    setAiResult(null);
+    setAiValidating(false);
+    writeContract({
+      address: GATEKEEPER_ADDRESS,
+      abi: GATEKEEPER_ABI,
+      functionName: "requestSubscription",
+      value: subscriptionPrice,
+      chainId: zeroGTestnet.id,
+    });
   };
 
   return (
     <div className="relative">
-      {/* Success modal */}
+      {/* AI validating — spinner overlay */}
+      {aiValidating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl bg-background p-8 text-center shadow-2xl ring-1 ring-border">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-accent/20">
+              <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            </div>
+            <h2 className="mb-2 text-2xl font-bold">Reviewing Your Account</h2>
+            <p className="mb-2 text-sm text-secondary">
+              VaraAI is validating your content history. This usually takes 10–30 seconds.
+            </p>
+            {txHash && (
+              <a
+                href={`https://chainscan-galileo.0g.ai/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 flex items-center justify-center gap-2 text-xs text-secondary hover:text-accent"
+              >
+                <ExternalLink className="h-3 w-3" />
+                View tx on 0G Explorer
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI rejected */}
+      {!aiValidating && aiResult && !aiResult.approved && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl bg-background p-8 text-center shadow-2xl ring-1 ring-border">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-truth-hoax/20">
+              <ShieldCheck className="h-8 w-8 text-truth-hoax" />
+            </div>
+            <h2 className="mb-2 text-2xl font-bold">Subscription Not Approved</h2>
+            <p className="mb-4 text-sm text-secondary">
+              VaraAI reviewed your account and couldn&apos;t approve your subscription. Your payment has been <span className="font-semibold text-vara-reward">refunded</span> on-chain.
+            </p>
+            <div className="mb-5 rounded-xl bg-truth-hoax/10 px-4 py-3 text-left text-xs text-truth-hoax">
+              <p className="mb-1 font-semibold">AI Reason:</p>
+              <p>{aiResult.reason}</p>
+            </div>
+            {txHash && (
+              <a
+                href={`https://chainscan-galileo.0g.ai/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mb-3 flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-surface-hover"
+              >
+                <ExternalLink className="h-4 w-4" />
+                View on Explorer
+              </a>
+            )}
+            <button
+              onClick={() => setAiResult(null)}
+              className="w-full rounded-full bg-accent py-3 font-bold text-white transition-colors hover:bg-accent-hover"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {showSuccess && txHash && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-3xl bg-background p-8 text-center shadow-2xl ring-1 ring-border">
@@ -141,9 +277,15 @@ export default function MonetizePage() {
               <CheckCircle2 className="h-8 w-8 text-truth-valid" />
             </div>
             <h2 className="mb-2 text-2xl font-bold">Payment Successful!</h2>
-            <p className="mb-5 text-sm text-secondary">
+            <p className="mb-3 text-sm text-secondary">
               You&apos;re now a VaraSocial Blue member. VaraAI and Mode Sleep are unlocked.
             </p>
+            {aiResult?.reason && (
+              <div className="mb-4 rounded-xl bg-truth-valid/10 px-4 py-3 text-left text-xs text-truth-valid">
+                <p className="mb-1 font-semibold">AI Verdict:</p>
+                <p>{aiResult.reason}</p>
+              </div>
+            )}
             <p className="mb-5 break-all rounded-xl bg-surface px-3 py-2 font-mono text-xs text-secondary">
               {txHash}
             </p>
@@ -169,7 +311,7 @@ export default function MonetizePage() {
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md">
         <h1 className="text-xl font-bold">Monetize</h1>
-        <p className="text-sm text-secondary">Earn $VARA from your content</p>
+        <p className="text-sm text-secondary">Earn {BRAND.token} from your content</p>
       </div>
 
       {/* Not subscribed — payment card */}
@@ -187,7 +329,9 @@ export default function MonetizePage() {
             </div>
 
             <div className="mb-5 flex items-baseline gap-2">
-              <span className="text-4xl font-bold">0.05</span>
+              <span className="text-4xl font-bold">
+                {subscriptionPrice !== undefined ? formatEther(subscriptionPrice) : SUBSCRIPTION_PRICE_0G}
+              </span>
               <span className="text-xl font-semibold text-accent">0G</span>
             </div>
 
@@ -210,7 +354,7 @@ export default function MonetizePage() {
 
             <button
               onClick={handlePay}
-              disabled={isLoading || !currentUser}
+              disabled={isLoading || !currentUser || (!isWrongChain && subscriptionPrice === undefined)}
               className="flex w-full items-center justify-center gap-2 rounded-full bg-accent py-3 font-bold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
             >
               {isLoading ? (
@@ -223,7 +367,9 @@ export default function MonetizePage() {
               ) : (
                 <>
                   <Wallet className="h-4 w-4" />
-                  {txTimedOut ? "Retry Payment" : "Pay 0.05 0G"}
+                  {txTimedOut
+                    ? "Retry Payment"
+                    : `Pay ${subscriptionPrice !== undefined ? formatEther(subscriptionPrice) : SUBSCRIPTION_PRICE_0G} 0G`}
                 </>
               )}
             </button>
@@ -275,7 +421,7 @@ export default function MonetizePage() {
                 <Zap className="h-5 w-5 text-vara-reward" />
                 <div>
                   <p className="text-sm text-secondary">Pending payout</p>
-                  <p className="text-xl font-bold text-vara-reward">38.1 $VARA</p>
+                  <p className="text-xl font-bold text-vara-reward">38.1 {BRAND.token}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -295,7 +441,7 @@ export default function MonetizePage() {
                 <p className="truncate font-mono text-sm">{currentUser?.walletAddress ?? "Connect wallet first"}</p>
               </div>
             </div>
-            <p className="mt-2 text-xs text-secondary">Minimum payout threshold: 10 $VARA</p>
+            <p className="mt-2 text-xs text-secondary">Minimum payout threshold: 10 {BRAND.token}</p>
           </div>
 
           {/* AI evaluation criteria */}
@@ -352,7 +498,7 @@ export default function MonetizePage() {
                     <tr key={p.id} className={i < MOCK_PAYOUTS.length - 1 ? "border-b border-border" : ""}>
                       <td className="px-4 py-3">{p.date}</td>
                       <td className="px-4 py-3 text-secondary">{p.posts}</td>
-                      <td className="px-4 py-3 text-right font-bold text-vara-reward">{p.amount} $VARA</td>
+                      <td className="px-4 py-3 text-right font-bold text-vara-reward">{p.amount} {BRAND.token}</td>
                       <td className="px-4 py-3 text-right">
                         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${p.status === "paid" ? "bg-truth-valid/20 text-truth-valid" : "bg-truth-suspicious/20 text-truth-suspicious"}`}>
                           {p.status === "paid" ? "Paid" : "Pending"}

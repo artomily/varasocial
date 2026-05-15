@@ -1,4 +1,4 @@
-export type TruthLevel = "valid" | "suspicious" | "hoax";
+export type TruthLevel = "valid" | "suspicious" | "hoax" | "pending";
 
 export interface User {
   id: string;
@@ -10,6 +10,7 @@ export interface User {
   bio?: string;
   walletConnectedAt?: string;
   usernameSetAt?: string;
+  aiReport?: string;
 }
 
 export type MediaItem = { type: "image" | "video"; url: string };
@@ -23,7 +24,7 @@ export interface Post {
   likes: number;
   reposts: number;
   replies: number;
-  truthScore: number;
+  truthScore: number | null;
   truthLevel: TruthLevel;
   viralityScore: number;
   varaReward?: number;

@@ -1,7 +1,8 @@
 import { TrendingUp, Coins, BarChart3, Zap } from "lucide-react";
+import { BRAND } from "@/lib/constants";
 
 const stats = [
-  { label: "Total Earned", value: "1,245 $VARA", icon: Coins, color: "text-vara-reward" },
+  { label: "Total Earned", value: `1,245 ${BRAND.token}`, icon: Coins, color: "text-vara-reward" },
   { label: "Virality Score", value: "78", icon: TrendingUp, color: "text-accent" },
   { label: "Monetized Posts", value: "34", icon: BarChart3, color: "text-truth-valid" },
   { label: "Active Subscribers", value: "128", icon: Zap, color: "text-truth-suspicious" },

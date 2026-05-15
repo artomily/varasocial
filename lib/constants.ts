@@ -58,8 +58,17 @@ export const TRUTH_COLORS = {
   hoax: "#f4212e",
 } as const;
 
+/** Native reward / gas token displayed across the UI. */
 export const BRAND = {
   name: "VaraSocial",
   accent: "#7c3aed",
-  token: "$VARA",
+  token: "$0G",
 } as const;
+
+/**
+ * Default Blue subscription price in 0G shown in the UI.
+ * The authoritative value is always read live from the smart contract
+ * (`subscriptionPrice()`), but this constant is used as a fallback
+ * while the contract read is loading.
+ */
+export const SUBSCRIPTION_PRICE_0G = 0.1 as const;

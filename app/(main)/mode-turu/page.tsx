@@ -3,6 +3,7 @@
 import { Bot, Lock, Pause, Send, Calendar, FileText } from "lucide-react";
 import { useApp } from "@/lib/store";
 import Link from "next/link";
+import { SUBSCRIPTION_PRICE_0G } from "@/lib/constants";
 
 const agents = [
   { name: "Auto Reply", description: "Handle collab requests from all platforms", status: "active", icon: Send },
@@ -39,7 +40,7 @@ export default function ModeSleepPage() {
             href="/monetize"
             className="rounded-full bg-accent px-6 py-3 font-bold text-white transition-colors hover:bg-accent-hover"
           >
-            Unlock with Blue — 0.05 0G
+            Unlock with Blue — {SUBSCRIPTION_PRICE_0G} 0G
           </Link>
         </div>
       ) : (

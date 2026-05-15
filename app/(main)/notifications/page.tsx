@@ -6,6 +6,7 @@ import { Avatar } from "@/components/common/Avatar";
 import { useApp } from "@/lib/store";
 import { fetchNotifications } from "@/lib/supabase-queries";
 import type { Notification } from "@/lib/types";
+import { BRAND } from "@/lib/constants";
 
 const iconMap: Record<Notification["type"], React.ElementType> = {
   like: Heart,
@@ -28,7 +29,7 @@ const labelMap: Record<Notification["type"], string> = {
   repost: "reposted your post",
   reply: "replied to your post",
   follow: "followed you",
-  reward: "You earned $VARA from your content",
+  reward: `You earned ${BRAND.token} from your content`,
 };
 
 function timeAgo(ts: string): string {

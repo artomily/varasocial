@@ -97,6 +97,10 @@ export async function checkSARA(text) {
   const json = await response.json();
   const raw = json.choices?.[0]?.message?.content;
 
+  if (raw === undefined) {
+    logger.warn("OpenRouter response missing choices content (checkSARA)", { responseBody: json });
+  }
+
   try {
     const parsed = JSON.parse(raw);
     // Coerce string booleans that some models return instead of JSON booleans
@@ -176,6 +180,10 @@ export async function assessTruthScore(text) {
 
   const json = await response.json();
   const raw = json.choices?.[0]?.message?.content;
+
+  if (raw === undefined) {
+    logger.warn("OpenRouter response missing choices content (assessTruthScore)", { responseBody: json });
+  }
 
   try {
     const parsed = JSON.parse(raw);

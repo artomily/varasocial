@@ -2,7 +2,7 @@
 
 > **"It's not who goes viral the most — it's who is the most honest."**
 
-VaraSocial is a **Web4 social media platform** that fundamentally reverses the broken incentives of conventional social networks. Every piece of content is scored by AI in real time, honest creators earn `$VARA` rewards, and all media is stored permanently on the [0G Decentralized Storage Network](https://0g.ai). Built for the **0G APAC Hackathon**.
+VaraSocial is a **Web4 social media platform** that fundamentally reverses the broken incentives of conventional social networks. Every piece of content is scored by AI in real time, honest creators earn `$0G` rewards, and all media is stored permanently on the [0G Decentralized Storage Network](https://0g.ai). Built for the **0G APAC Hackathon**.
 
 **🌐 Live Demo:** [varasocial.vercel.app](https://varasocial.vercel.app/)
 **📄 Smart Contract:** [`0x948F0ea80688E175d85D2B08418190AaB24db38d`](https://chainscan-galileo.0g.ai/address/0x948F0ea80688E175d85D2B08418190AaB24db38d) — 0G Chain Galileo Testnet (Chain ID `16602`)
@@ -16,7 +16,7 @@ Misinformation spreads **6× faster** than facts *(MIT, 2018)*. Web2 social plat
 | Web2 Problem | VaraSocial Solution |
 |---|---|
 | Misinformation goes viral without any filter | AI Truth Score (0–100) applied to every post |
-| Small creators are not fairly compensated | Automatic `$VARA` rewards for high-quality, truthful content |
+| Small creators are not fairly compensated | Automatic `$0G` rewards for high-quality, truthful content |
 | Platforms own your data | Media stored on 0G Network with on-chain hash — owned by the user |
 | Ads with no transparent moderation | Ad funds escrowed in a smart contract, released only after AI approval |
 | Centralized identity is a single point of failure | Wallet-first login — no email, no password |
@@ -46,8 +46,8 @@ Every new post is instantly pushed into a Redis queue and processed by the `trut
 ### 2. Mode Turu — AI Clone Persona
 A feature that doesn't exist anywhere else: when a user activates **Mode Turu**, an AI agent takes over their persona and **automatically replies to comments** based on the thread context and the user's own writing style. Your engagement stays alive 24/7 — even when you're offline.
 
-### 3. $VARA Rewards — Incentives for Quality Content
-Posts with `truthScore ≥ 80` and `viralityScore ≥ 60` automatically receive a `$VARA` reward calculation, displayed in real time on the feed and the monetization dashboard.
+### 3. $0G Rewards — Incentives for Quality Content
+Posts with `truthScore ≥ 80` and `viralityScore ≥ 60` automatically receive a `$0G` reward calculation, displayed in real time on the feed and the monetization dashboard.
 
 ### 4. On-Chain Ad Escrow + AI Hate Speech Moderation
 Advertisers deposit funds into the smart contract via `requestAdPlacement()` — funds are **locked** until the AI agent validates that the ad content is free of hate speech and harmful material. If rejected, funds are automatically refunded. Fully transparent and tamper-proof.
@@ -78,7 +78,7 @@ Log in with any EVM-compatible wallet (MetaMask, Coinbase Wallet, WalletConnect)
 | AI agents: truth-worker, clone-worker, likes-worker | ✅ Done |
 | Mode Turu (AI clone auto-reply) | ✅ Done |
 | Ads with on-chain escrow + AI moderation | ✅ Done |
-| `$VARA` reward display | ✅ Done |
+| `$0G` reward display | ✅ Done |
 | Monetize dashboard | ✅ Done |
 | 0G Storage upload integration | ⚠️ Utilities available in `og-storage-utils/`; full UI integration in progress |
 | Direct messages (Supabase Realtime) | ⚠️ UI complete; Realtime subscription pending |
@@ -153,7 +153,7 @@ flowchart TD
   H --> I[Truth Score 0–100 + Level]
   I --> F
   F --> J[VaraSocial Feed UI]
-  J --> K[Truth Badge + VARA Reward displayed]
+  J --> K[Truth Badge + 0G Reward displayed]
 
   L[Advertiser creates campaign] --> M[requestAdPlacement — escrow funds]
   M --> N[AI Agent — listener + worker]
@@ -243,14 +243,14 @@ app/
     messages/         # Direct messages
     notifications/    # Notifications center
     mode-turu/        # Activate AI clone persona
-    monetize/         # $VARA earnings dashboard
+    monetize/         # $0G earnings dashboard
     ads/              # Ad campaign setup
     socialflow/       # Viral trend graph
     ai-filter/        # Filter feed by AI truth tag
 components/
   feed/               # Feed, PostCard, ComposeBox
   layout/             # Sidebar, RightPanel, MobileNav
-  common/             # Avatar, TruthBadge, VaraReward, ViralityScore
+  common/             # Avatar, TruthBadge, 0G Reward, ViralityScore
 contracts/
   src/StorageGatekeeper.sol   # Deployed smart contract
   script/Deploy.s.sol         # Foundry deploy script
@@ -292,7 +292,7 @@ supabase/
 
 ## Roadmap
 
-- [ ] Full Vara Network integration — on-chain `$VARA` distribution directly to creator wallets
+- [ ] Full 0G Network integration — on-chain `$0G` distribution directly to creator wallets
 - [ ] Supabase Realtime — live feed updates, DMs, and push notifications
 - [ ] Mobile-first PWA
 - [ ] DAO governance for Truth Score threshold parameters

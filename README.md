@@ -1,25 +1,25 @@
 # VaraSocial
 
-> **"Bukan siapa yang paling viral — tapi siapa yang paling jujur."**
+> **"It's not who goes viral the most — it's who is the most honest."**
 
-VaraSocial adalah platform media sosial Web4 yang membalik insentif media sosial konvensional: setiap konten dinilai oleh AI secara real-time, kreator jujur mendapat reward $VARA, dan semua data media tersimpan permanen di [0G Decentralized Storage Network](https://0g.ai). Dibangun untuk **0G APAC Hackathon**.
+VaraSocial is a **Web4 social media platform** that fundamentally reverses the broken incentives of conventional social networks. Every piece of content is scored by AI in real time, honest creators earn `$VARA` rewards, and all media is stored permanently on the [0G Decentralized Storage Network](https://0g.ai). Built for the **0G APAC Hackathon**.
 
 **🌐 Live Demo:** [varasocial.vercel.app](https://varasocial.vercel.app/)
 **📄 Smart Contract:** [`0x948F0ea80688E175d85D2B08418190AaB24db38d`](https://chainscan-galileo.0g.ai/address/0x948F0ea80688E175d85D2B08418190AaB24db38d) — 0G Chain Galileo Testnet (Chain ID `16602`)
 
 ---
 
-## Mengapa VaraSocial?
+## Why VaraSocial?
 
-Hoax menyebar **6× lebih cepat** dari fakta (MIT, 2018). Platform sosial Web2 memonetisasi engagement, bukan kebenaran — dan data pengguna sepenuhnya dikuasai korporat. VaraSocial membalik ini:
+Misinformation spreads **6× faster** than facts *(MIT, 2018)*. Web2 social platforms monetize engagement, not truth — and user data is entirely owned by corporations. VaraSocial flips this paradigm:
 
-| Masalah Web2 | Solusi VaraSocial |
+| Web2 Problem | VaraSocial Solution |
 |---|---|
-| Hoax viral tanpa filter | AI Truth Score 0–100 pada setiap post |
-| Kreator kecil tidak dibayar adil | Reward $VARA otomatis untuk konten berkualitas tinggi |
-| Data dikuasai platform | Media tersimpan di 0G Network, hash on-chain — milik pengguna |
-| Iklan tanpa moderasi transparan | Escrow dana iklan di smart contract, cair hanya setelah AI approve |
-| Identitas terpusat rentan | Wallet-first login — tidak ada email, tidak ada password |
+| Misinformation goes viral without any filter | AI Truth Score (0–100) applied to every post |
+| Small creators are not fairly compensated | Automatic `$VARA` rewards for high-quality, truthful content |
+| Platforms own your data | Media stored on 0G Network with on-chain hash — owned by the user |
+| Ads with no transparent moderation | Ad funds escrowed in a smart contract, released only after AI approval |
+| Centralized identity is a single point of failure | Wallet-first login — no email, no password |
 
 ---
 
@@ -35,63 +35,63 @@ Hoax menyebar **6× lebih cepat** dari fakta (MIT, 2018). Platform sosial Web2 m
 
 ---
 
-## Fitur Utama
+## Core Features
 
-### 1. AI Truth Score — Real-time Content Validation
-Setiap post yang dibuat langsung masuk ke antrian Redis dan diproses oleh `truth-worker`:
-- Skor **0–100** dihitung via LLM (OpenRouter)
-- Label **Verified** (70–100, hijau) · **Suspicious** (40–69, kuning) · **Hoax** (0–39, merah)
-- Badge muncul langsung di feed — semua pengguna bisa melihat tingkat kebenaran konten
+### 1. AI Truth Score — Real-Time Content Validation
+Every new post is instantly pushed into a Redis queue and processed by the `truth-worker`:
+- A score from **0–100** is computed via LLM (OpenRouter)
+- **Verified** (70–100, green) · **Suspicious** (40–69, yellow) · **Hoax** (0–39, red)
+- The badge appears immediately in the feed — every user sees the credibility of every post at a glance
 
 ### 2. Mode Turu — AI Clone Persona
-Fitur unik yang tidak ada di platform lain: ketika pengguna mengaktifkan Mode Turu, AI agent mengambil alih persona mereka dan **membalas komentar secara otomatis** berdasarkan konteks thread dan gaya bicara pengguna tersebut. Engagement tetap hidup 24/7 meski pengguna offline.
+A feature that doesn't exist anywhere else: when a user activates **Mode Turu**, an AI agent takes over their persona and **automatically replies to comments** based on the thread context and the user's own writing style. Your engagement stays alive 24/7 — even when you're offline.
 
-### 3. $VARA Reward — Insentif untuk Konten Berkualitas
-Post dengan `truthScore ≥ 80` dan `viralityScore ≥ 60` secara otomatis mendapat kalkulasi reward $VARA yang ditampilkan real-time di feed dan dashboard monetisasi.
+### 3. $VARA Rewards — Incentives for Quality Content
+Posts with `truthScore ≥ 80` and `viralityScore ≥ 60` automatically receive a `$VARA` reward calculation, displayed in real time on the feed and the monetization dashboard.
 
-### 4. Iklan dengan Escrow On-chain + AI Moderasi SARA
-Pengiklan menyetor dana ke smart contract (`requestAdPlacement()`) — dana **terkunci** sampai AI agent memvalidasi konten iklan bebas dari SARA/ujaran kebencian. Jika ditolak, dana otomatis di-refund. Transparan dan tidak bisa dimanipulasi.
+### 4. On-Chain Ad Escrow + AI Hate Speech Moderation
+Advertisers deposit funds into the smart contract via `requestAdPlacement()` — funds are **locked** until the AI agent validates that the ad content is free of hate speech and harmful material. If rejected, funds are automatically refunded. Fully transparent and tamper-proof.
 
-### 5. 0G Storage + On-chain Data Ownership
-Media pengguna diupload ke 0G Network. Root hash disimpan on-chain via `setHashFor()`. Pengguna bisa:
-- `grantAccess / revokeAccess` — kontrol siapa yang bisa baca data mereka
-- `claimOwnership()` — ambil alih pengelolaan data mereka sepenuhnya
-- `withdrawExpired()` — self-refund jika operator tidak merespons dalam 24 jam
+### 5. 0G Storage + On-Chain Data Ownership
+User media is uploaded to the 0G Network. The root hash is anchored on-chain via `setHashFor()`. Users have full control:
+- `grantAccess / revokeAccess` — decide who can read their data
+- `claimOwnership()` — take full self-custody of their data
+- `withdrawExpired()` — self-refund if the operator fails to respond within 24 hours
 
 ### 6. Wallet-First Identity
-Login menggunakan EVM wallet (MetaMask, Coinbase Wallet, WalletConnect). Tidak ada email, tidak ada password — identitas digital yang benar-benar milik pengguna.
+Log in with any EVM-compatible wallet (MetaMask, Coinbase Wallet, WalletConnect). No email, no password — a truly self-sovereign digital identity.
 
 ---
 
-## Status Fitur
+## Feature Status
 
-| Fitur | Status |
-|-------|--------|
-| Feed (For You / Following / Truth Verified) | ✅ Done |
-| Compose post dengan optimistic update | ✅ Done |
-| Like, repost, komentar | ✅ Done |
-| Profil pengguna | ✅ Done |
+| Feature | Status |
+|---------|--------|
+| Feed (For You / Following / Truth Verified tabs) | ✅ Done |
+| Compose post with optimistic update | ✅ Done |
+| Like, repost, comment | ✅ Done |
+| User profile | ✅ Done |
 | AI Truth Score badge (real-time via worker) | ✅ Done |
 | Virality Score | ✅ Done |
 | Wallet connect (RainbowKit + Wagmi) | ✅ Done |
-| Smart contract `StorageGatekeeper` (deployed) | ✅ Done |
-| AI agent: truth-worker, clone-worker, likes-worker | ✅ Done |
+| `StorageGatekeeper` smart contract (deployed) | ✅ Done |
+| AI agents: truth-worker, clone-worker, likes-worker | ✅ Done |
 | Mode Turu (AI clone auto-reply) | ✅ Done |
-| Ads dengan escrow on-chain + AI SARA check | ✅ Done |
-| $VARA reward display | ✅ Done |
+| Ads with on-chain escrow + AI moderation | ✅ Done |
+| `$VARA` reward display | ✅ Done |
 | Monetize dashboard | ✅ Done |
-| 0G Storage upload integration | ⚠️ Tersedia di `og-storage-utils/`, integrasi penuh ke UI in progress |
-| Direct messages (Supabase Realtime) | ⚠️ UI done, butuh Realtime subscription |
-| Notifikasi live | ⚠️ UI done, butuh Supabase Realtime |
+| 0G Storage upload integration | ⚠️ Utilities available in `og-storage-utils/`; full UI integration in progress |
+| Direct messages (Supabase Realtime) | ⚠️ UI complete; Realtime subscription pending |
+| Live notifications | ⚠️ UI complete; Supabase Realtime pending |
 
 ---
 
-## Arsitektur Sistem
+## System Architecture
 
-### Stack Teknologi
+### Technology Stack
 
-| Layer | Teknologi |
-|-------|-----------|
+| Layer | Technology |
+|-------|------------|
 | **Frontend** | Next.js 16 (App Router), Tailwind CSS v4 |
 | **Database & Auth** | Supabase (PostgreSQL + Row Level Security) |
 | **Wallet** | RainbowKit + Wagmi + viem |
@@ -99,7 +99,7 @@ Login menggunakan EVM wallet (MetaMask, Coinbase Wallet, WalletConnect). Tidak a
 | **Blockchain** | 0G Chain Galileo Testnet (Chain ID 16602) |
 | **Smart Contract** | Solidity — `StorageGatekeeper.sol` (deployed) |
 | **AI Agent** | Node.js, BullMQ, Redis, OpenRouter LLM |
-| **Containerisasi** | Docker + Docker Compose |
+| **Containerization** | Docker + Docker Compose |
 | **State Management** | React Context + useCallback |
 
 ### Smart Contract — StorageGatekeeper
@@ -108,97 +108,97 @@ Login menggunakan EVM wallet (MetaMask, Coinbase Wallet, WalletConnect). Tidak a
 **Network:** 0G Chain Galileo Testnet · Chain ID `16602`
 **Explorer:** [chainscan-galileo.0g.ai](https://chainscan-galileo.0g.ai/address/0x948F0ea80688E175d85D2B08418190AaB24db38d)
 
-| Fungsi | Keterangan |
-|--------|------------|
-| `setHashFor(user, rootHash)` | Simpan root hash 0G Storage pengguna on-chain |
-| `requestSubscription()` | User bayar escrow untuk verifikasi blue-check |
-| `processValidation(user, approved)` | AI agent approve → dana ke treasury; reject → auto-refund |
-| `requestAdPlacement(campaignId)` | Pengiklan escrow dana iklan |
-| `processAdValidation(user, approved)` | AI moderasi SARA on-chain — reject = refund otomatis |
-| `grantAccess / revokeAccess` | User kontrol akses data mereka |
-| `claimOwnership()` | User ambil alih pengelolaan data sepenuhnya |
-| `withdrawExpired()` | Self-refund jika operator tidak respons dalam 24 jam |
+| Function | Description |
+|----------|-------------|
+| `setHashFor(user, rootHash)` | Anchor the user's 0G Storage root hash on-chain |
+| `requestSubscription()` | User escrows funds for blue-check verification |
+| `processValidation(user, approved)` | AI approves → funds released to treasury; rejects → auto-refund |
+| `requestAdPlacement(campaignId)` | Advertiser escrows ad campaign funds |
+| `processAdValidation(user, approved)` | On-chain AI moderation — reject triggers automatic refund |
+| `grantAccess / revokeAccess` | User manages read permissions on their data |
+| `claimOwnership()` | User takes full self-custody of their stored data |
+| `withdrawExpired()` | Self-refund if operator is unresponsive within 24 hours |
 
-### AI Agent System — 4 Worker Paralel
+### AI Agent System — 4 Parallel Workers
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    AI Validator Agent                     │
+│                    AI Validator Agent                    │
 │                  (Docker · PM2 · Node.js)                │
 ├────────────────┬────────────────┬────────────────────────┤
 │  truth-worker  │  clone-worker  │  listener + worker     │
 │                │                │                        │
-│ Post baru →    │ Komentar baru  │ Event 0G blockchain →  │
-│ Redis queue →  │ → Redis queue  │ Redis queue →          │
-│ LLM scoring    │ → AI generate  │ SARA check via LLM →   │
-│ 0–100 →        │   reply sesuai │ approve/reject on-chain│
-│ update DB      │   persona user │ + auto-refund          │
+│ New post →     │ New comment →  │ 0G blockchain event →  │
+│ Redis queue →  │ Redis queue →  │ Redis queue →          │
+│ LLM scoring    │ AI generates   │ Hate speech check →    │
+│ 0–100 →        │ reply matching │ approve/reject on-chain│
+│ update DB      │ user's persona │ + auto-refund          │
 ├────────────────┴────────────────┴────────────────────────┤
-│                   likes-worker                           │
-│   Deteksi milestone likes → trigger notifikasi reward    │
+│                      likes-worker                        │
+│      Detects like milestones → triggers reward alerts    │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Alur Data Lengkap
+### Full Data Flow
 
 ```mermaid
 flowchart TD
-  A[User connect wallet] --> B[Buat post + upload media]
+  A[User connects wallet] --> B[Creates post + uploads media]
   B --> C[0G Storage Network]
   C --> D[Root Hash]
-  D --> E[Smart Contract setHashFor on-chain]
+  D --> E[Smart Contract setHashFor — on-chain]
   D --> F[Supabase Database]
   F --> G[AI Agent — truth-worker]
-  G --> H{LLM scoring}
-  H --> I[Truth Score 0-100 + Level]
+  G --> H{LLM Scoring}
+  H --> I[Truth Score 0–100 + Level]
   I --> F
   F --> J[VaraSocial Feed UI]
-  J --> K[Truth Badge + VARA Reward display]
+  J --> K[Truth Badge + VARA Reward displayed]
 
-  L[Pengiklan buat iklan] --> M[requestAdPlacement — escrow dana]
+  L[Advertiser creates campaign] --> M[requestAdPlacement — escrow funds]
   M --> N[AI Agent — listener + worker]
-  N --> O{SARA Check}
-  O -->|Safe| P[processAdValidation true — iklan tayang]
-  O -->|Unsafe| Q[processAdValidation false — dana refund]
+  N --> O{Hate Speech Check}
+  O -->|Safe| P[processAdValidation true — ad goes live]
+  O -->|Unsafe| Q[processAdValidation false — funds refunded]
 
-  R[User aktifkan Mode Turu] --> S[Komentar masuk]
+  R[User activates Mode Turu] --> S[New comment arrives]
   S --> T[clone-worker]
-  T --> U[Generate AI reply sesuai persona user]
-  U --> V[Auto-reply di thread]
+  T --> U[AI generates reply matching user's persona]
+  U --> V[Auto-reply posted to thread]
 ```
 
 ---
 
 ## Quick Start
 
-### Demo Cepat (hanya butuh Supabase)
+### Quick Demo (Supabase only)
 
 ```bash
 git clone https://github.com/your-repo/varasocial
 cd varasocial
 npm install
 cp .env.example .env.local
-# Isi NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
-# NEXT_PUBLIC_DEMO_EMAIL, NEXT_PUBLIC_DEMO_PASSWORD
+# Fill in: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+#          NEXT_PUBLIC_DEMO_EMAIL, NEXT_PUBLIC_DEMO_PASSWORD
 npx supabase db push
 npx tsx scripts/seed.ts
 npm run dev
 ```
 
-Buka [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000).
 
-### Full Stack (termasuk AI Agent)
+### Full Stack (including AI Agent)
 
 ```bash
-# 1. Setup frontend (lihat di atas)
+# 1. Set up the frontend (see above)
 
-# 2. Setup AI Agent
+# 2. Set up the AI Agent
 cd ai-agent/ai-validator
 cp env.example .env
-# Isi RPC_URL, CONTRACT_ADDRESS, OPERATOR_PRIVATE_KEY,
-# SUPABASE_URL, SUPABASE_SERVICE_KEY, OPENROUTER_API_KEY, OG_INDEXER_RPC
+# Fill in: RPC_URL, CONTRACT_ADDRESS, OPERATOR_PRIVATE_KEY,
+#          SUPABASE_URL, SUPABASE_SERVICE_KEY, OPENROUTER_API_KEY, OG_INDEXER_RPC
 
-# 3. Jalankan agent (Redis + semua worker)
+# 3. Start the agent (Redis + all workers)
 docker-compose up -d
 ```
 
@@ -208,65 +208,65 @@ docker-compose up -d
 
 ### Frontend (`/.env.local`)
 
-| Variable | Wajib | Keterangan |
-|----------|-------|------------|
+| Variable | Required | Description |
+|----------|----------|-------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Supabase anon key |
-| `NEXT_PUBLIC_DEMO_EMAIL` | ✅ | Email seed user (auto-login) |
-| `NEXT_PUBLIC_DEMO_PASSWORD` | ✅ | Password seed user |
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | ⚠️ | [cloud.walletconnect.com](https://cloud.walletconnect.com) |
+| `NEXT_PUBLIC_DEMO_EMAIL` | ✅ | Seed user email (auto-login for demo) |
+| `NEXT_PUBLIC_DEMO_PASSWORD` | ✅ | Seed user password |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | ⚠️ | Obtain at [cloud.walletconnect.com](https://cloud.walletconnect.com) |
 | `NEXT_PUBLIC_0G_RPC_URL` | ⚠️ | 0G Storage node RPC endpoint |
 
 ### AI Agent (`/ai-agent/ai-validator/.env`)
 
-| Variable | Keterangan |
-|----------|------------|
-| `RPC_URL` | 0G Chain RPC (untuk listen contract events) |
+| Variable | Description |
+|----------|-------------|
+| `RPC_URL` | 0G Chain RPC URL (for listening to contract events) |
 | `CONTRACT_ADDRESS` | `0x948F0ea80688E175d85D2B08418190AaB24db38d` |
-| `OPERATOR_PRIVATE_KEY` | Hot wallet operator untuk on-chain tx |
-| `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` | Akses DB dari agent |
-| `OPENROUTER_API_KEY` | LLM untuk truth scoring + SARA check |
-| `OG_INDEXER_RPC` | 0G indexer untuk download konten |
+| `OPERATOR_PRIVATE_KEY` | Operator hot wallet for on-chain transactions |
+| `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` | Database access from the agent |
+| `OPENROUTER_API_KEY` | LLM for truth scoring and hate speech checks |
+| `OG_INDEXER_RPC` | 0G indexer for downloading content |
 
 ---
 
-## Struktur Project
+## Project Structure
 
 ```
 app/
-  (main)/             # Semua route terautentikasi
+  (main)/             # All authenticated routes
     page.tsx          # Home feed
     explore/          # Search & discovery
-    profile/          # Profil pengguna aktif
-    user/[handle]/    # Profil publik pengguna lain
-    post/[id]/        # Single post + komentar
-    messages/         # DMs
-    notifications/    # Notifikasi
-    mode-turu/        # Aktifkan AI clone persona
-    monetize/         # Dashboard $VARA earnings
-    ads/              # Setup kampanye iklan
-    socialflow/       # Tren viral graph
-    ai-filter/        # Filter feed by AI tag
+    profile/          # Active user's profile
+    user/[handle]/    # Public profile of other users
+    post/[id]/        # Single post + comments thread
+    messages/         # Direct messages
+    notifications/    # Notifications center
+    mode-turu/        # Activate AI clone persona
+    monetize/         # $VARA earnings dashboard
+    ads/              # Ad campaign setup
+    socialflow/       # Viral trend graph
+    ai-filter/        # Filter feed by AI truth tag
 components/
   feed/               # Feed, PostCard, ComposeBox
   layout/             # Sidebar, RightPanel, MobileNav
   common/             # Avatar, TruthBadge, VaraReward, ViralityScore
 contracts/
-  src/StorageGatekeeper.sol   # Smart contract (deployed)
+  src/StorageGatekeeper.sol   # Deployed smart contract
   script/Deploy.s.sol         # Foundry deploy script
 ai-agent/
   ai-validator/
     src/
-      truth-worker.js   # AI truth scoring setiap post baru
-      clone-worker.js   # AI auto-reply untuk Mode Turu
-      likes-worker.js   # Deteksi milestone likes
-      listener.js       # Listen event 0G blockchain
-      worker.js         # Proses SARA check + on-chain tx
-      ai.js             # OpenRouter LLM wrapper (retry + timeout)
+      truth-worker.js   # AI truth scoring for every new post
+      clone-worker.js   # AI auto-reply for Mode Turu
+      likes-worker.js   # Detects like milestones for rewards
+      listener.js       # Listens to 0G blockchain events
+      worker.js         # Processes hate speech checks + on-chain txs
+      ai.js             # OpenRouter LLM wrapper (with retry + timeout)
 og-storage-utils/       # 0G Storage upload/download utilities
 lib/
   store.tsx             # Global React context (state + actions)
-  supabase-queries.ts   # DB query helpers
+  supabase-queries.ts   # Database query helpers
   types.ts              # TypeScript interfaces
 supabase/
   migrations/           # 11 SQL migration files
@@ -276,8 +276,8 @@ supabase/
 
 ## Database Schema
 
-| Tabel | Keterangan |
-|-------|------------|
+| Table | Description |
+|-------|-------------|
 | `users` | handle, displayName, avatar, walletAddress, bio, verified, is_turu |
 | `posts` | content, media, truthScore, truthLevel, viralityScore, varaReward |
 | `likes` | userId × postId |
@@ -292,25 +292,25 @@ supabase/
 
 ## Roadmap
 
-- [ ] Integrasi penuh Vara Network — distribusi $VARA on-chain langsung ke wallet kreator
-- [ ] Supabase Realtime — live feed, DMs, dan notifikasi push
+- [ ] Full Vara Network integration — on-chain `$VARA` distribution directly to creator wallets
+- [ ] Supabase Realtime — live feed updates, DMs, and push notifications
 - [ ] Mobile-first PWA
-- [ ] DAO governance untuk parameter Truth Score threshold
-- [ ] ZK proof untuk verifikasi kebenaran tanpa membuka konten privat
+- [ ] DAO governance for Truth Score threshold parameters
+- [ ] ZK proofs for truth verification without exposing private content
 
 ---
 
 ## Team
 
-Dibangun selama **0G APAC Hackathon** oleh:
+Built during the **0G APAC Hackathon** by:
 
-| Nama | Peran |
-|------|-------|
+| Name | Role |
+|------|------|
 | **Rafi Mahrus** | Fullstack (Frontend, Smart Contract, AI Agent) |
 | **Rakya Vara** | Fullstack (Frontend, Backend, Infrastructure) |
 
 ---
 
-## Lisensi
+## License
 
 MIT

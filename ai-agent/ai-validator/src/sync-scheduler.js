@@ -75,7 +75,7 @@ async function fetchUserSnapshot(userId, walletAddress) {
     supabase
       .from("users")
       .select(
-        "id, handle, display_name, avatar_url, bio, wallet_address, verified, followers, following, created_at, updated_at"
+        "id, handle, display_name, avatar_url, bio, wallet_address, verified, created_at, updated_at, wallet_connected_at, username_set_at, persona, is_turu, ai_report, tx_hash, ai_status"
       )
       .eq("id", userId)
       .single(),

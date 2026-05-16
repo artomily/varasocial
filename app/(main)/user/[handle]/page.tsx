@@ -1,12 +1,14 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Calendar, LinkIcon } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { MOCK_USERS } from "@/lib/mock-data";
 import { Avatar } from "@/components/common/Avatar";
 import { PostCard } from "@/components/feed/PostCard";
+import { fetchUserByHandle, fetchPostsByUserId } from "@/lib/supabase-queries";
+import type { User, Post } from "@/lib/types";
 
 export default function UserProfilePage({
   params,
@@ -14,9 +16,42 @@ export default function UserProfilePage({
   params: Promise<{ handle: string }>;
 }) {
   const { handle } = use(params);
-  const { posts, currentUser, followingUsers, toggleFollow } = useApp();
+  const { currentUser, followingUsers, toggleFollow } = useApp();
 
-  const user = MOCK_USERS.find((u) => u.handle === handle);
+  const [user, setUser] = useState<User | null>(
+    () => MOCK_USERS.find((u) => u.handle === handle) ?? null,
+  );
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      // Try Supabase first, then fallback to mock
+      const dbUser = await fetchUserByHandle(handle);
+      if (cancelled) return;
+      if (dbUser) {
+        setUser(dbUser);
+        const dbPosts = await fetchPostsByUserId(dbUser.id);
+        if (!cancelled) setUserPosts(dbPosts);
+      } else {
+        const mockUser = MOCK_USERS.find((u) => u.handle === handle) ?? null;
+        setUser(mockUser);
+        setUserPosts([]);
+      }
+      if (!cancelled) setLoading(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [handle]);
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-secondary">Loading…</div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="p-8 text-center text-secondary">User not found</div>
@@ -25,7 +60,7 @@ export default function UserProfilePage({
 
   const isCurrentUser = !!(currentUser && user.id === currentUser.id);
   const isFollowing = followingUsers.has(user.id);
-  const userPosts = posts.filter((p) => p.author.id === user.id);
+
 
   return (
     <div>

@@ -2,22 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { Wallet, LogOut } from "lucide-react";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { injected } from "wagmi/connectors";
+import { useAccount, useDisconnect } from "wagmi";
+import { useApp } from "@/lib/store";
 
 export function WalletButton({ collapsed = false }: { collapsed?: boolean }) {
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
   const { disconnect } = useDisconnect();
+  const { openOnboardingModal } = useApp();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  const handleConnect = () => {
-    connect({ connector: injected() });
-  };
 
   const handleDisconnect = () => {
     disconnect();
@@ -41,7 +37,7 @@ export function WalletButton({ collapsed = false }: { collapsed?: boolean }) {
   if (collapsed) {
     return (
       <button
-        onClick={isConnected ? handleDisconnect : handleConnect}
+        onClick={isConnected ? handleDisconnect : openOnboardingModal}
         title={isConnected ? `Disconnect ${shortAddr}` : "Connect Wallet"}
         className="flex w-full items-center justify-center rounded-full border border-border py-2.5 text-secondary transition-colors hover:bg-surface-hover hover:text-foreground"
       >
@@ -68,7 +64,7 @@ export function WalletButton({ collapsed = false }: { collapsed?: boolean }) {
 
   return (
     <button
-      onClick={handleConnect}
+      onClick={openOnboardingModal}
       className="flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-hover"
     >
       <Wallet className="h-5 w-5" />

@@ -92,6 +92,12 @@ type AdCampaignRow = {
   placements: string[];
   status: string;
   route_hash: string | null;
+  ai_status: string | null;
+  ai_report: string | null;
+  impressions: number;
+  clicks: number;
+  spent: string;
+  created_at: string;
 };
 
 type PostStorageRouteRow = {
@@ -212,6 +218,12 @@ function mapAdCampaignRow(row: AdCampaignRow): AdCampaign {
     placements: row.placements ?? [],
     status: row.status,
     routeHash: row.route_hash ?? undefined,
+    aiStatus: row.ai_status ?? null,
+    aiReport: row.ai_report ?? null,
+    impressions: row.impressions ?? 0,
+    clicks: row.clicks ?? 0,
+    spent: Number(row.spent ?? 0),
+    createdAt: row.created_at,
   };
 }
 
@@ -263,6 +275,28 @@ export async function fetchUserById(userId: string): Promise<User | null> {
 
   if (error || !data) return null;
   return mapUserRow(data as UserRow);
+}
+
+export async function fetchUserByHandle(handle: string): Promise<User | null> {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .ilike("handle", handle)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapUserRow(data as UserRow);
+}
+
+export async function fetchPostsByUserId(userId: string): Promise<Post[]> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*, users(*)")
+    .eq("author_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+  return (data as PostRow[]).map(mapPostRow);
 }
 
 export async function fetchUserByWallet(
@@ -427,18 +461,20 @@ export async function fetchUserAdPreference(
 export async function fetchAdCampaigns(
   ownerId: string,
 ): Promise<AdCampaign[]> {
-  const { data, error } = await supabase
-    .from("ad_campaigns")
-    .select("*")
-    .eq("owner_id", ownerId)
-    .order("created_at", { ascending: false });
-
-  if (error || !data) {
-    console.error("fetchAdCampaigns error:", error || "No data returned");
+  // Uses the server-side API route which runs with the service-role key,
+  // bypassing RLS (auth.uid() is always null in a wallet-only app).
+  try {
+    const res = await fetch(`/api/ad-campaigns?owner_id=${encodeURIComponent(ownerId)}`);
+    if (!res.ok) {
+      console.error("fetchAdCampaigns error:", await res.text());
+      return [];
+    }
+    const data = await res.json();
+    return (data as AdCampaignRow[]).map(mapAdCampaignRow);
+  } catch (err) {
+    console.error("fetchAdCampaigns fetch error:", err);
     return [];
   }
-
-  return (data as AdCampaignRow[]).map(mapAdCampaignRow);
 }
 
 export async function fetchPostStorageRoute(

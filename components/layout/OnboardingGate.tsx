@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Wallet, AtSign } from "lucide-react";
+import { CheckCircle2, Wallet, AtSign, X } from "lucide-react";
 import { useAccount, useConnect } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { useApp } from "@/lib/store";
@@ -11,7 +11,7 @@ const LS_KEY = "vara-onboarding-complete";
 export function OnboardingGate() {
   const { address, isConnected, status } = useAccount();
   const { connect } = useConnect();
-  const { currentUser, completeUsername, loading } = useApp();
+  const { currentUser, completeUsername, loading, showOnboardingModal, closeOnboardingModal } = useApp();
   const [handle, setHandle] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -20,8 +20,6 @@ export function OnboardingGate() {
     setMounted(true);
   }, []);
 
-  // Once we confirm the user has a username, persist the flag so future
-  // page loads don't flash the modal during the async init window.
   useEffect(() => {
     if (currentUser?.usernameSetAt) {
       localStorage.setItem(LS_KEY, "1");
@@ -34,27 +32,32 @@ export function OnboardingGate() {
     }
   }, [currentUser]);
 
-  // Don't render anything on the server (wallet state is client-only).
-  // This eliminates the hydration mismatch entirely.
+  // Close modal automatically once onboarding is fully complete
+  useEffect(() => {
+    if (currentUser?.usernameSetAt && showOnboardingModal) {
+      closeOnboardingModal();
+    }
+  }, [currentUser?.usernameSetAt, showOnboardingModal, closeOnboardingModal]);
+
   if (!mounted) return null;
 
   const alreadyOnboarded = localStorage.getItem(LS_KEY) === "1";
 
-  // 'reconnecting' = wagmi is restoring a saved connection (page refresh).
-  // Never show the connect modal during this window — the connection is coming.
   const needsConnect = status === "disconnected";
-  // Only show the "creating profile…" spinner for users who haven't completed
-  // onboarding yet.  For existing users it would just flash and disappear.
   const waitingForProfile =
     !alreadyOnboarded && isConnected && !!address && loading && !currentUser;
   const needsUsername =
     isConnected && !!address && !loading && !!currentUser && !currentUser.usernameSetAt;
 
+  // Show modal when explicitly opened by the user OR when they've connected
+  // but still need to set a username (auto-prompt so they can't skip it).
+  const isOpen = showOnboardingModal || needsUsername;
+
+  if (!isOpen) return null;
+
   const handleConnectWallet = () => {
     connect({ connector: injected() });
   };
-
-  if (!needsConnect && !waitingForProfile && !needsUsername) return null;
 
   const submitUsername = async () => {
     const nextHandle = handle.trim();
@@ -71,14 +74,26 @@ export function OnboardingGate() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 px-4 backdrop-blur-lg">
       <div className="w-full max-w-md rounded-[28px] border border-border bg-surface/95 p-6 shadow-2xl shadow-black/30">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/15 text-accent">
-            <Wallet className="h-5 w-5" />
+        {/* Header */}
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/15 text-accent">
+              <Wallet className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-lg font-bold">Welcome to VaraSocial</p>
+              <p className="text-sm text-secondary">Connect your wallet to get started.</p>
+            </div>
           </div>
-          <div>
-            <p className="text-lg font-bold">Welcome to VaraSocial</p>
-            <p className="text-sm text-secondary">Connect your wallet, then claim your username.</p>
-          </div>
+          {/* Only allow closing if the user hasn't connected yet (no forced onboarding) */}
+          {needsConnect && !needsUsername && (
+            <button
+              onClick={closeOnboardingModal}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full hover:bg-surface-hover"
+            >
+              <X className="h-4 w-4 text-secondary" />
+            </button>
+          )}
         </div>
 
         {needsConnect && (

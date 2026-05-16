@@ -24,8 +24,10 @@ import {
   ArrowLeft,
   AlertTriangle,
 } from "lucide-react";
+import { Eye, MousePointer } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { createAdCampaign, fetchAdCampaignValidation } from "@/lib/supabase-queries";
+import { createAdCampaign, fetchAdCampaignValidation, fetchAdCampaigns } from "@/lib/supabase-queries";
+import type { AdCampaign } from "@/lib/types";
 import { zeroGTestnet } from "@/lib/wagmi-config";
 
 // ---- Contract config -------------------------------------------------------
@@ -80,6 +82,10 @@ export default function AdsSetupPage() {
   const [creativeRouteHash, setCreativeRouteHash] = useState<string | null>(null);
 
   // ---- Wizard state --------------------------------------------------------
+
+  const [tab, setTab] = useState<"create" | "myads">("create");
+  const [myCampaigns, setMyCampaigns] = useState<AdCampaign[]>([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
 
   const [step, setStep] = useState<Step>("form");
   const [savedCampaignId, setSavedCampaignId] = useState<string | null>(null);
@@ -285,6 +291,14 @@ export default function AdsSetupPage() {
     });
   };
 
+  const loadMyCampaigns = async () => {
+    if (!currentUser) return;
+    setLoadingCampaigns(true);
+    const campaigns = await fetchAdCampaigns(currentUser.id);
+    setMyCampaigns(campaigns ?? []);
+    setLoadingCampaigns(false);
+  };
+
   const handleStartOver = () => {
     setAiResult(null);
     setTxTimedOut(false);
@@ -405,7 +419,7 @@ export default function AdsSetupPage() {
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          {step === "payment" && (
+          {step === "payment" && tab === "create" && (
             <button
               onClick={() => setStep("form")}
               className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface"
@@ -413,20 +427,128 @@ export default function AdsSetupPage() {
               <ArrowLeft className="h-4 w-4" />
             </button>
           )}
-          <div>
-            <h1 className="text-xl font-bold">Ads Setup</h1>
-            <p className="text-sm text-secondary">
-              {step === "form"
-                ? "Step 1 of 2 — Campaign details"
-                : step === "payment"
+          <div className="flex-1">
+            <h1 className="text-xl font-bold">Ads</h1>
+            {/* Tabs — only show when not mid-wizard */}
+            {step === "form" && (
+              <div className="mt-2 flex gap-1">
+                <button
+                  onClick={() => setTab("create")}
+                  className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+                    tab === "create"
+                      ? "bg-accent text-white"
+                      : "text-secondary hover:bg-surface"
+                  }`}
+                >
+                  Create New Ad
+                </button>
+                <button
+                  onClick={() => { setTab("myads"); loadMyCampaigns(); }}
+                  className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+                    tab === "myads"
+                      ? "bg-accent text-white"
+                      : "text-secondary hover:bg-surface"
+                  }`}
+                >
+                  My Ads
+                </button>
+              </div>
+            )}
+            {step !== "form" && (
+              <p className="text-sm text-secondary">
+                {step === "payment"
                   ? "Step 2 of 2 — Payment & AI review"
                   : "Reviewing your ad…"}
-            </p>
+              </p>
+            )}
           </div>
         </div>
       </div>
 
       <div className="space-y-4 p-4">
+        {/* MY ADS TAB */}
+        {tab === "myads" && step === "form" && (
+          <div className="space-y-3">
+            {loadingCampaigns && (
+              <div className="flex items-center justify-center py-12 text-secondary">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            )}
+            {!loadingCampaigns && myCampaigns.length === 0 && (
+              <div className="rounded-3xl border border-border bg-surface p-8 text-center">
+                <Megaphone className="mx-auto mb-3 h-10 w-10 text-secondary/40" />
+                <p className="font-semibold">No campaigns yet</p>
+                <p className="mt-1 text-sm text-secondary">Create your first ad to see it here.</p>
+                <button
+                  onClick={() => setTab("create")}
+                  className="mt-4 rounded-full bg-accent px-5 py-2 text-sm font-bold text-white"
+                >
+                  Create New Ad
+                </button>
+              </div>
+            )}
+            {!loadingCampaigns && myCampaigns.map((c) => (
+              <div key={c.id} className="rounded-3xl border border-border bg-surface p-5">
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold">{c.title}</p>
+                    <p className="text-xs text-secondary capitalize">{c.objective}</p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      c.status === "active"
+                        ? "bg-green-500/15 text-green-500"
+                        : c.status === "rejected"
+                          ? "bg-red-500/15 text-red-500"
+                          : "bg-secondary/15 text-secondary"
+                    }`}
+                  >
+                    {c.status}
+                  </span>
+                </div>
+                <div className="mb-3 flex gap-4 text-sm">
+                  <div className="flex items-center gap-1.5 text-secondary">
+                    <Eye className="h-4 w-4" />
+                    <span className="font-semibold text-foreground">{c.impressions.toLocaleString()}</span>
+                    <span>views</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-secondary">
+                    <MousePointer className="h-4 w-4" />
+                    <span className="font-semibold text-foreground">{c.clicks.toLocaleString()}</span>
+                    <span>clicks</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-secondary">
+                    <Coins className="h-4 w-4" />
+                    <span className="font-semibold text-foreground">{c.spent}</span>
+                    <span>0G spent</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap gap-1">
+                    {c.placements.map((p) => (
+                      <span key={p} className="rounded-full bg-border px-2 py-0.5 text-xs capitalize">{p}</span>
+                    ))}
+                  </div>
+                  {c.routeHash && (
+                    <a
+                      href={`https://chainscan-galileo.0g.ai/tx/${c.routeHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-accent hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      On-chain
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* CREATE TAB content (only show when tab === create OR mid-wizard) */}
+        {(tab === "create" || step !== "form") && (
+        <>
         {/* STEP 1: Form */}
         {step === "form" && (
           <div className="rounded-[28px] border border-border bg-surface/80 p-5">
@@ -740,6 +862,8 @@ export default function AdsSetupPage() {
               </p>
             </div>
           </div>
+        )}
+        </>
         )}
       </div>
     </div>

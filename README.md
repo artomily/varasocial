@@ -43,8 +43,8 @@ Every new post is instantly pushed into a Redis queue and processed by the `trut
 - **Verified** (70–100, green) · **Suspicious** (40–69, yellow) · **Hoax** (0–39, red)
 - The badge appears immediately in the feed — every user sees the credibility of every post at a glance
 
-### 2. Mode Turu — AI Clone Persona
-A feature that doesn't exist anywhere else: when a user activates **Mode Turu**, an AI agent takes over their persona and **automatically replies to comments** based on the thread context and the user's own writing style. Your engagement stays alive 24/7 — even when you're offline.
+### 2. Mode Sleep — AI Clone Persona
+A feature that doesn't exist anywhere else: when a user activates **Mode Sleep**, an AI agent takes over their persona and **automatically replies to comments** based on the thread context and the user's own writing style. Your engagement stays alive 24/7 — even when you're offline.
 
 ### 3. $0G Rewards — Incentives for Quality Content
 Posts with `truthScore ≥ 80` and `viralityScore ≥ 60` automatically receive a `$0G` reward calculation, displayed in real time on the feed and the monetization dashboard.
@@ -76,7 +76,7 @@ Log in with any EVM-compatible wallet (MetaMask, Coinbase Wallet, WalletConnect)
 | Wallet connect (RainbowKit + Wagmi) | ✅ Done |
 | `StorageGatekeeper` smart contract (deployed) | ✅ Done |
 | AI agents: truth-worker, clone-worker, likes-worker | ✅ Done |
-| Mode Turu (AI clone auto-reply) | ✅ Done |
+| Mode Sleep (AI clone auto-reply) | ✅ Done |
 | Ads with on-chain escrow + AI moderation | ✅ Done |
 | `$0G` reward display | ✅ Done |
 | Monetize dashboard | ✅ Done |
@@ -161,7 +161,7 @@ flowchart TD
   O -->|Safe| P[processAdValidation true — ad goes live]
   O -->|Unsafe| Q[processAdValidation false — funds refunded]
 
-  R[User activates Mode Turu] --> S[New comment arrives]
+  R[User activates Mode Sleep] --> S[New comment arrives]
   S --> T[clone-worker]
   T --> U[AI generates reply matching user's persona]
   U --> V[Auto-reply posted to thread]
@@ -242,7 +242,7 @@ app/
     post/[id]/        # Single post + comments thread
     messages/         # Direct messages
     notifications/    # Notifications center
-    mode-turu/        # Activate AI clone persona
+    mode-sleep/       # Activate AI clone persona
     monetize/         # $0G earnings dashboard
     ads/              # Ad campaign setup
     socialflow/       # Viral trend graph
@@ -258,7 +258,7 @@ ai-agent/
   ai-validator/
     src/
       truth-worker.js   # AI truth scoring for every new post
-      clone-worker.js   # AI auto-reply for Mode Turu
+      clone-worker.js   # AI auto-reply for Mode Sleep
       likes-worker.js   # Detects like milestones for rewards
       listener.js       # Listens to 0G blockchain events
       worker.js         # Processes hate speech checks + on-chain txs
@@ -307,7 +307,7 @@ Built during the **0G APAC Hackathon** by:
 | Name | Role |
 |------|------|
 | **Rafi Mahrus** | Fullstack (Frontend, Smart Contract, AI Agent) |
-| **Rakya Vara** | Fullstack (Frontend, Backend, Infrastructure) |
+| **Rakyavara** | Fullstack (Frontend, Backend, Infrastructure) |
 
 ---
 

@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import "dotenv/config";
 import { cloneQueue, likesQueue, truthQueue } from "./queue.js";
 import { flushCache, isCacheEnabled } from "./cache.js";
+import { setConfig, getConfig } from "./config.js";
 import { logger } from "./logger.js";
 
 const PORT = parseInt(process.env.WEBHOOK_PORT ?? "3100", 10);
@@ -58,7 +59,7 @@ function parseBody(body) {
 export function startCloneWebhook() {
   const server = createServer(async (req, res) => {
     // ── Route guard ──────────────────────────────────────────────────────────
-    const ALLOWED = ["/webhook/comment", "/webhook/cache-reset", "/webhook/like", "/webhook/post"];
+    const ALLOWED = ["/webhook/comment", "/webhook/cache-reset", "/webhook/like", "/webhook/post", "/webhook/config"];
     if (req.method !== "POST" || !ALLOWED.includes(req.url)) {
       res.writeHead(404).end("Not Found");
       return;
@@ -74,6 +75,34 @@ export function startCloneWebhook() {
         res.writeHead(401).end("Unauthorized");
         return;
       }
+    }
+
+    // ── Route: POST /webhook/config ───────────────────────────────────────────
+    if (req.url === "/webhook/config") {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      let patch;
+      try {
+        const obj = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+        patch = {};
+        if (typeof obj.apiKey === "string" && obj.apiKey) patch.apiKey = obj.apiKey;
+        if (typeof obj.model === "string" && obj.model) patch.model = obj.model;
+      } catch {
+        res.writeHead(400).end("Bad Request: invalid JSON");
+        return;
+      }
+
+      if (Object.keys(patch).length === 0) {
+        res.writeHead(400).end("Bad Request: provide apiKey and/or model");
+        return;
+      }
+
+      setConfig(patch);
+      const current = getConfig();
+      logger.info("Webhook: config updated", { model: current.model, apiKeySet: !!current.apiKey });
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, model: current.model, apiKeySet: !!current.apiKey }));
+      return;
     }
 
     // ── Route: POST /webhook/cache-reset ─────────────────────────────────────

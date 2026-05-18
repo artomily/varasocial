@@ -5,6 +5,7 @@ import { PostCard } from "./PostCard";
 import { ComposeBox } from "./ComposeBox";
 import { AdSlotCard } from "./AdSlotCard";
 import { useApp } from "@/lib/store";
+import { WalletConnectBanner } from "@/components/common/WalletConnectBanner";
 
 const TABS = ["For You", "Following",] as const;
 
@@ -18,6 +19,9 @@ export function Feed() {
 
   return (
     <div className="pb-20 sm:pb-0">
+      {/* Wallet Connect Banner */}
+      <WalletConnectBanner />
+
       {/* Tabs */}
       <div className="sticky top-0 z-10 flex border-b border-border bg-background/80 backdrop-blur-md">
         {TABS.map((tab) => (

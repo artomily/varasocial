@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Wallet, AtSign, X } from "lucide-react";
+import { Wallet, AtSign, X } from "lucide-react";
 import { useAccount, useConnect } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { useApp } from "@/lib/store";
 
 const LS_KEY = "vara-onboarding-complete";
+const LS_DISMISSED = "vara-onboarding-dismissed";
 
 export function OnboardingGate() {
   const { address, isConnected, status } = useAccount();
   const { connect } = useConnect();
-  const { currentUser, completeUsername, loading, showOnboardingModal, closeOnboardingModal } = useApp();
+  const { currentUser, completeUsername, loading, showOnboardingModal, closeOnboardingModal, openOnboardingModal } = useApp();
   const [handle, setHandle] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -19,6 +20,16 @@ export function OnboardingGate() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Auto-open modal for first-time visitors who haven't connected
+  useEffect(() => {
+    if (!mounted) return;
+    const alreadyDismissed = localStorage.getItem(LS_DISMISSED) === "1";
+    const alreadyOnboarded = localStorage.getItem(LS_KEY) === "1";
+    if (!alreadyDismissed && !alreadyOnboarded && status === "disconnected") {
+      openOnboardingModal();
+    }
+  }, [mounted, status, openOnboardingModal]);
 
   useEffect(() => {
     if (currentUser?.usernameSetAt) {
@@ -38,6 +49,11 @@ export function OnboardingGate() {
       closeOnboardingModal();
     }
   }, [currentUser?.usernameSetAt, showOnboardingModal, closeOnboardingModal]);
+
+  const handleDismissModal = () => {
+    localStorage.setItem(LS_DISMISSED, "1");
+    closeOnboardingModal();
+  };
 
   if (!mounted) return null;
 
@@ -73,74 +89,87 @@ export function OnboardingGate() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 px-4 backdrop-blur-lg">
-      <div className="w-full max-w-md rounded-[28px] border border-border bg-surface/95 p-6 shadow-2xl shadow-black/30">
-        {/* Header */}
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/15 text-accent">
-              <Wallet className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-lg font-bold">Welcome to VaraSocial</p>
-              <p className="text-sm text-secondary">Connect your wallet to get started.</p>
-            </div>
-          </div>
-          {/* Only allow closing if the user hasn't connected yet (no forced onboarding) */}
-          {needsConnect && !needsUsername && (
-            <button
-              onClick={closeOnboardingModal}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full hover:bg-surface-hover"
-            >
-              <X className="h-4 w-4 text-secondary" />
-            </button>
-          )}
-        </div>
+      <div className="relative w-full max-w-md rounded-[28px] border border-border bg-gradient-to-b from-accent/20 to-accent/5 p-8 shadow-2xl shadow-black/30">
+        {/* Close button */}
+        {needsConnect && !needsUsername && (
+          <button
+            onClick={handleDismissModal}
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-secondary/60 transition-colors hover:bg-surface-hover hover:text-secondary"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
 
         {needsConnect && (
-          <div className="mb-4 rounded-2xl border border-border bg-background/60 p-4">
-            <p className="mb-1 text-sm font-semibold">Step 1 · Connect wallet</p>
-            <p className="text-sm text-secondary">Your wallet is your identity in VaraSocial.</p>
-            <div className="mt-4">
-              <button
-                onClick={handleConnectWallet}
-                className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-              >
-                <Wallet className="h-4 w-4" />
-                Connect Wallet
-              </button>
+          <div className="flex flex-col items-center text-center">
+            {/* Logo */}
+            <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-accent/20">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="VaraSocial" className="h-14 w-14 object-contain" />
             </div>
+
+            {/* Heading */}
+            <h2 className="mb-2 text-3xl font-bold">Welcome to VaraSocial</h2>
+            <p className="mb-8 text-sm text-secondary">
+              Connect your wallet to start posting, earning rewards, and exploring Web4.
+            </p>
+
+            {/* Connect Wallet Button */}
+            <button
+              onClick={handleConnectWallet}
+              className="w-full rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-accent-hover"
+            >
+              Connect Wallet
+            </button>
           </div>
         )}
 
         {waitingForProfile && (
-          <div className="rounded-2xl border border-border bg-background/60 p-4">
-            <p className="mb-1 text-sm font-semibold">Step 2 · Preparing profile</p>
-            <p className="text-sm text-secondary">Wallet connected. We are creating your account before you choose a username.</p>
+          <div className="flex flex-col items-center text-center">
+            {/* Logo */}
+            <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-accent/20">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="VaraSocial" className="h-14 w-14 object-contain" />
+            </div>
+
+            <h2 className="mb-2 text-3xl font-bold">Setting up your profile</h2>
+            <p className="text-sm text-secondary">
+              Wallet connected. We are creating your account...
+            </p>
           </div>
         )}
 
         {needsUsername && (
-          <div className="rounded-2xl border border-border bg-background/60 p-4">
-            <p className="mb-1 text-sm font-semibold">Step 2 · Create username</p>
-            <p className="text-sm text-secondary">Pick a unique handle for your public profile.</p>
-            <label className="mt-4 block text-xs font-medium text-secondary">Username</label>
-            <div className="mt-2 flex items-center gap-2 rounded-2xl border border-border bg-background px-3 py-2.5">
-              <AtSign className="h-4 w-4 text-secondary" />
-              <input
-                value={handle}
-                onChange={(event) => setHandle(event.target.value)}
-                placeholder="your-handle"
-                className="w-full bg-transparent text-sm outline-none placeholder:text-secondary"
-              />
+          <div className="flex flex-col items-center text-center">
+            {/* Logo */}
+            <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-accent/20">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="VaraSocial" className="h-14 w-14 object-contain" />
             </div>
-            <button
-              onClick={submitUsername}
-              disabled={submitting || !handle.trim()}
-              className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-opacity disabled:opacity-50"
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              {submitting ? "Saving..." : "Continue"}
-            </button>
+
+            <h2 className="mb-2 text-3xl font-bold">Choose your username</h2>
+            <p className="mb-6 text-sm text-secondary">
+              Pick a unique handle for your public profile.
+            </p>
+
+            <div className="w-full">
+              <div className="flex items-center gap-2 rounded-full border border-border bg-background/60 px-4 py-3">
+                <AtSign className="h-5 w-5 text-secondary" />
+                <input
+                  value={handle}
+                  onChange={(event) => setHandle(event.target.value)}
+                  placeholder="your-handle"
+                  className="w-full bg-transparent text-base outline-none placeholder:text-secondary"
+                />
+              </div>
+              <button
+                onClick={submitUsername}
+                disabled={submitting || !handle.trim()}
+                className="mt-4 w-full rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition-opacity hover:bg-accent-hover disabled:opacity-50"
+              >
+                {submitting ? "Saving..." : "Continue"}
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { logger } from "./logger.js";
+import { getConfig } from "./config.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const FETCH_TIMEOUT_MS = 30_000;
@@ -64,13 +65,13 @@ export async function checkSARA(text) {
     response = await fetchWithRetry(OPENROUTER_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        Authorization: `Bearer ${getConfig().apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "https://varasocial.app",
         "X-Title": "VaraSocial AI Validator",
       },
       body: JSON.stringify({
-        model: process.env.LLM_MODEL ?? "google/gemini-2.0-flash-exp",
+        model: getConfig().model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: text },
@@ -151,13 +152,13 @@ export async function assessTruthScore(text) {
     response = await fetchWithRetry(OPENROUTER_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        Authorization: `Bearer ${getConfig().apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "https://varasocial.app",
         "X-Title": "VaraSocial AI Validator",
       },
       body: JSON.stringify({
-        model: process.env.LLM_MODEL ?? "google/gemini-2.0-flash-exp",
+        model: getConfig().model,
         messages: [
           { role: "system", content: TRUTH_SYSTEM_PROMPT },
           { role: "user", content: text },

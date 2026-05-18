@@ -72,3 +72,58 @@ export const BRAND = {
  * while the contract read is loading.
  */
 export const SUBSCRIPTION_PRICE_0G = 0.1 as const;
+
+/**
+ * StorageGatekeeper smart contract configuration
+ * Network: 0G Chain Testnet (Galileo) — Chain ID 16602
+ */
+export const STORAGE_GATEKEEPER = {
+  address: "0x948F0ea80688E175d85D2B08418190AaB24db38d" as const,
+  abi: [
+    {
+      type: "function",
+      name: "getHash",
+      stateMutability: "view",
+      inputs: [{ name: "user", type: "address" }],
+      outputs: [{ type: "bytes32" }],
+    },
+    {
+      type: "function",
+      name: "hasHash",
+      stateMutability: "view",
+      inputs: [{ name: "user", type: "address" }],
+      outputs: [{ type: "bool" }],
+    },
+    {
+      type: "function",
+      name: "setHash",
+      stateMutability: "nonpayable",
+      inputs: [{ name: "rootHash", type: "bytes32" }],
+      outputs: [],
+    },
+    {
+      type: "function",
+      name: "grantAccess",
+      stateMutability: "nonpayable",
+      inputs: [{ name: "reader", type: "address" }],
+      outputs: [],
+    },
+    {
+      type: "function",
+      name: "revokeAccess",
+      stateMutability: "nonpayable",
+      inputs: [{ name: "reader", type: "address" }],
+      outputs: [],
+    },
+    {
+      type: "function",
+      name: "hasReadAccess",
+      stateMutability: "view",
+      inputs: [
+        { name: "user", type: "address" },
+        { name: "reader", type: "address" },
+      ],
+      outputs: [{ type: "bool" }],
+    },
+  ] as const,
+} as const;

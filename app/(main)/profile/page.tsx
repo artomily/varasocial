@@ -1,17 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, LinkIcon, MessageCircle, Heart } from "lucide-react";
+import { Calendar, LinkIcon, MessageCircle, Heart, Database, Loader2 } from "lucide-react";
+import { useAccount } from "wagmi";
 import { useApp } from "@/lib/store";
 import { Avatar } from "@/components/common/Avatar";
 import { PostCard } from "@/components/feed/PostCard";
 import { TruthBadge } from "@/components/common/TruthBadge";
+import { RootHashModal } from "@/components/common/RootHashModal";
+import { STORAGE_GATEKEEPER } from "@/lib/constants";
+import { zeroGTestnet } from "@/lib/wagmi-config";
+
+// Type declaration for window.ethereum
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
 
 type Tab = "Posts" | "Replies" | "Media" | "Likes";
 
 export default function ProfilePage() {
+  const { address } = useAccount();
   const { posts, comments, currentUser, loading, likedPosts, varaAIEnabled } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>("Posts");
+  const [showRootHashModal, setShowRootHashModal] = useState(false);
+  const [fetchedRootHash, setFetchedRootHash] = useState<string>("");
+  const [fetchingHash, setFetchingHash] = useState(false);
 
   const userPosts = posts.filter((p) => currentUser && p.author.id === currentUser.id && !p.parentId);
   const userReplies = comments.filter((c) => currentUser && c.author.id === currentUser.id);
@@ -23,8 +38,68 @@ export default function ProfilePage() {
 
   const TABS: Tab[] = ["Posts", "Replies", "Media", "Likes"];
 
+  const handleGetRootHash = async () => {
+    if (!address) return;
+    
+    setFetchingHash(true);
+    try {
+      // Use wallet provider to make the call so msg.sender is the user's address
+      if (!window.ethereum) {
+        alert("Please install MetaMask or another Web3 wallet to continue.");
+        return;
+      }
+
+      const { createWalletClient, createPublicClient, http, custom } = await import("viem");
+      
+      // Create wallet client with user's provider
+      const walletClient = createWalletClient({
+        account: address as `0x${string}`,
+        chain: zeroGTestnet,
+        transport: custom(window.ethereum),
+      });
+
+      // Create public client for reading
+      const publicClient = createPublicClient({
+        chain: zeroGTestnet,
+        transport: custom(window.ethereum),
+      });
+
+      // Call contract using the user's wallet as msg.sender
+      const rootHash = await publicClient.readContract({
+        address: STORAGE_GATEKEEPER.address as `0x${string}`,
+        abi: STORAGE_GATEKEEPER.abi,
+        functionName: "getHash",
+        args: [address as `0x${string}`],
+        account: address as `0x${string}`, // This sets msg.sender to user's address
+      });
+
+      if (rootHash && rootHash !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+        setFetchedRootHash(rootHash as string);
+        setShowRootHashModal(true);
+      } else {
+        alert("No root hash found for your address. Please upload data to 0G Storage first.");
+      }
+    } catch (error: any) {
+      console.error("Error fetching root hash:", error);
+      if (error.message?.includes("access denied")) {
+        alert("Access denied. You can only view your own root hash, or you need to grant access to another address first.");
+      } else {
+        alert("Failed to fetch root hash. Please try again later.");
+      }
+    } finally {
+      setFetchingHash(false);
+    }
+  };
+
   return (
     <div>
+      {/* Root Hash Modal */}
+      <RootHashModal
+        isOpen={showRootHashModal}
+        onClose={() => setShowRootHashModal(false)}
+        rootHash={fetchedRootHash}
+      />
+
       {/* Header banner */}
       <div className="h-48 bg-linear-to-r from-accent/30 to-vara-reward/30" />
 
@@ -53,6 +128,29 @@ export default function ProfilePage() {
             Joined 2025
           </span>
         </div>
+
+        {/* Get Root Hash Button */}
+        {address && (
+          <div className="mt-3">
+            <button
+              onClick={handleGetRootHash}
+              disabled={fetchingHash}
+              className="inline-flex items-center gap-2 rounded-full border border-accent bg-accent/10 px-4 py-2 text-sm font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-50"
+            >
+              {fetchingHash ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Fetching...
+                </>
+              ) : (
+                <>
+                  <Database className="h-4 w-4" />
+                  Get 0G Root Hash
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         <div className="mt-3 flex gap-4 text-sm">
           <span>
